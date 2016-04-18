@@ -1,64 +1,71 @@
 ####### Tuning the learning rate for Gibbs posterior
 
-tuneLearn <- function(form, data, nrep, sig, tau, err = 0.01, ncores = 1)
+tuneLearn <- function(form, data, nrep, lsig, tau, err = 0.01, ncores = 1)
 { 
+  if( length(tau) > 1 ) stop("length(tau) > 1, but this method works only for scalar tau")
+  
   n <- nrow(data)
   
   # Create bootstrapped datasets
   index <- lapply(1:nrep, function(nouse) sample(1:n, n, replace = TRUE))
   bootSets <- lapply(index, function(ff) data[ff, ] )
   
-  gauFit <- gam(form, data = data)
+  # Main Gaussian fit, used for initializations
+  if( is.formula(form) )
+  {
+   gauFit <- gam(form, data = data)
+  } else {
+   gauFit <- gam(form, data = data, family = gaulss)
+  }
+  
+  lam <- err * sqrt(2*pi*gauFit$sig2) / (2*log(2)*exp(lsig)) 
   
   # Estimating coverage
-  simul <- lapply(sig, function(inSig){
-    
+  z <- lapply(1:length(lsig), function(ii){
+        
     if( is.formula(form) )
     {
       
-      lam <- err * sqrt(2*pi*gauFit$sig2) / (2*log(2)*exp(inSig))  
+      mainFit <- gam(form, family = logF(tau = tau, lam = lam[ii], theta = lsig[ii]), data = data)
       
-      mainFit <- gam(form, family = logF(tau = tau, lam = lam, theta = inSig), data = data)
-      
-      coverage <- sapply(bootSets, 
+      out <- sapply(bootSets, 
                          function(input)
                          {
-                           fit <- gam(form, family = logF(tau = tau, lam = lam, theta = inSig), data = input, 
+                           fit <- gam(form, family = logF(tau = tau, lam = lam[ii], theta = lsig[ii]), data = input, 
                                       sp = mainFit$sp, start = coef(mainFit))
                            
                            pred <- predict(fit, newdata = data, se = TRUE)
                            
-                           cover <- mean( (pred$fit+2*pred$se.fit > mainFit$fit) & (mainFit$fit > pred$fit-2*pred$se.fit) )
+                           .z <- (pred$fit - mainFit$fit) / pred$se.fit
                            
-                           return( cover )
+                           return( .z )
                          })
       
     } else {
       
-    stop("This does not work, yet")
+    #stop("This does not work, yet")
     
-    mainFit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = inSig), data = data)
+    mainFit <- gam(form, family = logFlss2(tau = tau, lam = lam[ii], offset = lsig[ii]), data = data)
     
-    coverage <- sapply(bootSets, 
+    out <- sapply(bootSets, 
                        function(input)
                        {
-                         fit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = inSig), 
+                         fit <- gam(form, family = logFlss2(tau = tau, lam = lam[ii], offset = lsig[ii]), 
                                     data = input, sp = mainFit$sp)
                          
                          pred <- predict(fit, newdata = data, se = TRUE)
                          
-                         cover <- mean( (pred$fit[ , 1]+2*pred$se.fit[ , 1] > mainFit$fit[ , 1]) & 
-                                        (mainFit$fit[ , 1] > pred$fit[ , 1]-2*pred$se.fit[ , 1]) )
+                         .z <-  (pred$fit[ , 1] - mainFit$fit[ , 1]) / pred$se.fit[ , 1] 
                          
-                         return( cover )
+                         return( .z )
                        })
     
     }
     
-    return( coverage )
+    return( out )
   })#, mc.cores = ncores)
   
-  cover <- sapply(simul, mean)
+  loss <- sapply(z, function(.x) .adTest(as.vector(.x)))
   
-  return( cover )
+  return( list("loss" = loss, "lambda" = lam) )
 }

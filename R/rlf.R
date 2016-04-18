@@ -16,8 +16,8 @@ rlf <- function(n, mu, tau, sig, lam)
 # tau <- 0.2
 # sig <- 1
 # lam <- 0.1
-# s <- rlogF(1e4, mu, tau, sig, lam)
-# truth <- lf(sort(s), tau, mu, sig, lam)
+# s <- rlf(1e4, mu, tau, sig, lam)
+# truth <- dlf(sort(s), tau, mu, sig, lam)
 # plot(sort(s), truth, type = 'l')
 # lines(density(s, bw = 0.1), col = 2)
 # 
@@ -25,7 +25,7 @@ rlf <- function(n, mu, tau, sig, lam)
 # tau <- 0.1
 # sig <- 0.3
 # lam <- 0.4
-# s <- rlogF(1e6, mu, tau, sig, lam)
+# s <- rlf(1e6, mu, tau, sig, lam)
 # 
 # mean(s)
 # sig * lam * ( digamma(lam*tau) - digamma(lam*(1-tau)) ) + mu
