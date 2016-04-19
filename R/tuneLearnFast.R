@@ -12,46 +12,8 @@
 #' @references Fasiolo and Wood XXX.           
 #' @export
 #' 
-#' 
-#' 
 
-# lamObs <- 0.1
-# n <- 1000
-# x <- seq(-4, 4, length.out = n)
-# 
-# X <- cbind(1, x, x^2)
-# beta <- c(0, 1, 1)
-# sigma <- 1
-# f <- drop(X %*% beta)
-# tauSim <- 0.9
-# dat <- f + rlf(n, 0, tau = tauSim, sig = sigma, lamObs) 
-# 
-# dataf <- data.frame(cbind(dat, x))
-# names(dataf) <- c("y", "x")
-# 
-# #### Function starts here
-# tauSeq <- seq(0.1, 0.9, length.out = 4)
-# qFit <- qgam(y~s(x, k = 30), data = dataf, tau = tauSeq, err = 0.02, ncores = 1, control = list("K" = 20))
-# 
-# plot(x, dat, main = "Coverage matching", pch = '.', ylab = "y")
-# for(ii in 1:length(tauSeq)){
-#   truth <- f + quantile( rlf(n, 0, tau = tauSim, sig = sigma, lamObs), 1-tauSeq[ii] )
-#   fCV <- predict(qFit[[ii]], data.frame(x=x), se=TRUE)
-#   
-#   lines(x, truth, col = 3, lwd = 2)
-#   lines(x, fCV$fit, lwd = 2)
-# }
-# 
-# ii = 1
-# plot(x, dat, main = "Coverage matching", pch = '.', ylab = "y")
-# fCV <- predict(qFit[[ii]], data.frame(x=x), se=TRUE)
-# lines(x, fCV$fit, lwd = 2)
-# lines(x, fCV$fit + 2*fCV$se.fit, lwd = 2, col = 2)
-# lines(x, fCV$fit - 2*fCV$se.fit, lwd = 2, col = 2)
-# ii <- ii + 1
-
-####### Tuning the learning rate for Gibbs posterior
-tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL, 
+tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL, 
                           ncores = 1,  control = list())
 { 
   # Setting up control parameter
@@ -89,13 +51,13 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
     } }
   
   # Order quantiles so that those close to the median are dealt with first
-  oTau <- order( abs(tau-0.5) )
+  oQu <- order( abs(qu-0.5) )
   
   # (Optional) Initializing the search range for sigma
   if( is.null(ctrl[["init"]]) ){
     # We assume lam~0 and we match the variance of a symmetric Laplace density with that of the Gaussian fit.
-    # We use the value of tau that is the closest to 0.5
-    tmp <- tau[ oTau[1] ]
+    # We use the value of qu that is the closest to 0.5
+    tmp <- qu[ oQu[1] ]
     isig <- log(sqrt(  ctrl$gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
   } else {
     isig <- ctrl[["init"]]
@@ -106,12 +68,12 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
   srange <- isig + brac
 
   # Initialize
-  nt <- length(tau)
+  nt <- length(qu)
 
   # Estimated learning rates, # of bracket expansions, error rates and bracket ranges used in bisection
   sigs <- efacts <- errors <- numeric(nt)
   rans <- matrix(NA, nt, 2)
-  names(sigs) <- names(errors) <- rownames(rans) <- tau
+  names(sigs) <- names(errors) <- rownames(rans) <- qu
   
   # Here we need bTol > aTol otherwise we the new bracket will be too close to probable solution
   aTol <- 1.5 * tol
@@ -119,7 +81,7 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
   
   for(ii in 1:nt)
   {
-    oi <- oTau[ii]
+    oi <- oQu[ii]
     
     ef <- 1
     
@@ -129,7 +91,7 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
       srange <- isig + ef * brac
       
       # Estimate log(sigma)
-      res  <- .tuneLearnFast(form = form, data = data, tau = tau[oi], err = err,
+      res  <- .tuneLearnFast(form = form, data = data, qu = qu[oi], err = err,
                              boot = boot, srange = srange, ncores = ncores, ctrl = ctrl)  
       
       lsig <- res$minimum
@@ -144,7 +106,7 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
         
         if(ii < nt)
         {
-          kk <- oTau[ which.min(abs(tau[oTau[ii+1]] - tau[oTau[1:ii]])) ]
+          kk <- oQu[ which.min(abs(qu[oQu[ii+1]] - qu[oQu[1:ii]])) ]
           isig <- sigs[kk] 
           wd <- abs(diff(rans[kk, ]))
           brac <- c(-1, 1) * wd / 2
@@ -165,20 +127,20 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
     
     if( ctrl$verbose && (nt>1) )
     {
-      tseq <- oTau[1:ii]
+      tseq <- oQu[1:ii]
       tmp <- rans[tseq, , drop = FALSE]
       layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE), 
              heights=c(2, 1))
       par(mai = c(1, 1, 0.1, 0.1))
-      plot(tau[tseq], sigs[oTau[1:ii]], ylim = range(as.vector(tmp)), xlim = range(tau), col = 2, 
-           ylab = expression("Log(" * sigma * ")"), xlab = "tau")
-      points(tau[tseq], tmp[ , 1], pch = 3)
-      points(tau[tseq], tmp[ , 2], pch = 3)
-      points(tau[tseq], rowMeans(tmp), pch = 3)
-      for(zz in 1:ii) segments(tau[oTau[zz]], rowMeans(rans)[oTau[zz]] - abs(diff(tmp[zz, ]))/4, 
-                               tau[oTau[zz]], rowMeans(rans)[oTau[zz]] + abs(diff(tmp[zz, ]))/4, col = 1)
-      plot(tau, efacts, xlab = "tau", "ylab" = "Bracket expansions")  
-      plot(tau, errors)
+      plot(qu[tseq], sigs[oQu[1:ii]], ylim = range(as.vector(tmp)), xlim = range(qu), col = 2, 
+           ylab = expression("Log(" * sigma * ")"), xlab = "qu")
+      points(qu[tseq], tmp[ , 1], pch = 3)
+      points(qu[tseq], tmp[ , 2], pch = 3)
+      points(qu[tseq], rowMeans(tmp), pch = 3)
+      for(zz in 1:ii) segments(qu[oQu[zz]], rowMeans(rans)[oQu[zz]] - abs(diff(tmp[zz, ]))/4, 
+                               qu[oQu[zz]], rowMeans(rans)[oQu[zz]] + abs(diff(tmp[zz, ]))/4, col = 1)
+      plot(qu, efacts, xlab = "qu", "ylab" = "Bracket expansions")  
+      plot(qu, errors)
     }
   }
   
@@ -188,9 +150,9 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
 }
 
 ##########################################################################
-### Internal version, which works with scalar tau
+### Internal version, which works with scalar qu
 ########################################################################## 
-.tuneLearnFast <- function(form, data, boot, tau, err, srange, ncores, ctrl)
+.tuneLearnFast <- function(form, data, boot, qu, err, srange, ncores, ctrl)
 {
   n <- nrow(data)
   
@@ -202,12 +164,12 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
     # Extended Gam or ...
     if( plyr:::is.formula(form) ){
       
-      mainFit <- gam(form, family = logF(tau = tau, lam = lam, theta = lsig), data = data)
+      mainFit <- gam(form, family = logF(qu = qu, lam = lam, theta = lsig), data = data)
       
       z <- sapply(boot, 
                   function(input)
                   {
-                    fit <- gam(form, family = logF(tau = tau, lam = lam, theta = lsig), data = input, 
+                    fit <- gam(form, family = logF(qu = qu, lam = lam, theta = lsig), data = input, 
                                sp = mainFit$sp, start = coef(mainFit))
                     
                     pred <- predict(fit, newdata = data, se = TRUE)
@@ -219,12 +181,12 @@ tuneLearnFast <- function(form, data, tau, err = 0.01, boot = NULL,
       
     } else { #... Gamlss
       
-      mainFit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = lsig), data = data)
+      mainFit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = lsig), data = data)
       
       z <- sapply(boot, 
                   function(input)
                   {
-                    fit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = lsig), 
+                    fit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = lsig), 
                                data = input, sp = mainFit$sp)
                     
                     pred <- predict(fit, newdata = data, se = TRUE)

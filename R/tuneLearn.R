@@ -1,8 +1,8 @@
 ####### Tuning the learning rate for Gibbs posterior
 
-tuneLearn <- function(form, data, nrep, lsig, tau, err = 0.01, ncores = 1)
+tuneLearn <- function(form, data, nrep, lsig, qu, err = 0.01, ncores = 1)
 { 
-  if( length(tau) > 1 ) stop("length(tau) > 1, but this method works only for scalar tau")
+  if( length(qu) > 1 ) stop("length(qu) > 1, but this method works only for scalar qu")
   
   n <- nrow(data)
   
@@ -26,12 +26,12 @@ tuneLearn <- function(form, data, nrep, lsig, tau, err = 0.01, ncores = 1)
     if( is.formula(form) )
     {
       
-      mainFit <- gam(form, family = logF(tau = tau, lam = lam[ii], theta = lsig[ii]), data = data)
+      mainFit <- gam(form, family = logF(qu = qu, lam = lam[ii], theta = lsig[ii]), data = data)
       
       out <- sapply(bootSets, 
                          function(input)
                          {
-                           fit <- gam(form, family = logF(tau = tau, lam = lam[ii], theta = lsig[ii]), data = input, 
+                           fit <- gam(form, family = logF(qu = qu, lam = lam[ii], theta = lsig[ii]), data = input, 
                                       sp = mainFit$sp, start = coef(mainFit))
                            
                            pred <- predict(fit, newdata = data, se = TRUE)
@@ -45,12 +45,12 @@ tuneLearn <- function(form, data, nrep, lsig, tau, err = 0.01, ncores = 1)
       
     #stop("This does not work, yet")
     
-    mainFit <- gam(form, family = logFlss2(tau = tau, lam = lam[ii], offset = lsig[ii]), data = data)
+    mainFit <- gam(form, family = logFlss2(qu = qu, lam = lam[ii], offset = lsig[ii]), data = data)
     
     out <- sapply(bootSets, 
                        function(input)
                        {
-                         fit <- gam(form, family = logFlss2(tau = tau, lam = lam[ii], offset = lsig[ii]), 
+                         fit <- gam(form, family = logFlss2(qu = qu, lam = lam[ii], offset = lsig[ii]), 
                                     data = input, sp = mainFit$sp)
                          
                          pred <- predict(fit, newdata = data, se = TRUE)

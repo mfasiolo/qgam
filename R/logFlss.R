@@ -39,8 +39,10 @@
 ## Modified log-F density
 #######################
 
-logFlss <- function (link = list("identity", "log"), tau = NULL, lam = NULL) 
+logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL) 
 { 
+  tau <- 1 - qu
+
   ## Extended family object for modified log-F, to allow direct estimation of theta
   ## as part of REML optimization. Currently the template for extended family objects.
   ## length(theta)=2; log theta supplied. 

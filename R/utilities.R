@@ -2,6 +2,19 @@
 # Utilities
 ##########
 
+####### Check loss function
+checkloss <- function(y, mu, qu){
+  
+  tau <- 1 - qu
+  
+  d <- y - mu
+  
+  l <- - sum( tau*d[d<0] ) - sum( (tau-1)*d[d>0] )
+  
+  return( l )
+  
+} 
+
 #### Vettorize check Loss function
 checklossVett <- function(y, mu, p){
   
@@ -33,9 +46,9 @@ qqVett <- function(y, mu){
 #### Does stuff like "predict", "aic", etcetera
 qdo <- function(obj, qu, fun, ...){
   
-  if( !(qu %in% obj[["tau"]]) ) stop("qu is not in obj[[\"tau\"]].")
+  if( !(qu %in% obj[["qu"]]) ) stop("qu is not in obj[[\"qu\"]].")
     
-  tmpObj <- obj[["fit"]][[ which(obj[["tau"]] == qu) ]]
+  tmpObj <- obj[["fit"]][[ which(obj[["qu"]] == qu) ]]
   
   tmpObj[["model"]] <- obj[["model"]]
   tmpObj[["smooth"]] <- obj[["smooth"]]

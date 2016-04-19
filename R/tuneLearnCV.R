@@ -1,9 +1,8 @@
 ####### Tuning the learning rate for Gibbs posterior
 
-tuneLearnCV <- function(form, data, nrep, sig, tau, lamba = 0.1, ncores = 1, K = 10)
+tuneLearnCV <- function(form, data, nrep, sig, qu, lamba = 0.1, ncores = 1, K = 10)
 { 
   n <- nrow(data)
-  qu <- 1-tau
   
   index <- sample(1:K, n, replace = TRUE)
   cvSets <- lapply(1:K, 
@@ -20,13 +19,13 @@ tuneLearnCV <- function(form, data, nrep, sig, tau, lamba = 0.1, ncores = 1, K =
     if( is.formula(form) )
     {
       
-      mainFit <- gam(form, family = logF(tau = tau, lam = lam, theta = inSig), data = data)
+      mainFit <- gam(form, family = logF(qu = qu, lam = lam, theta = inSig), data = data)
       
       coverage <- sapply(cvSets, 
                          function(input)
                          {
                            fit <- gam(form, 
-                                      family = logF(tau = tau, lam = lam, theta = inSig), 
+                                      family = logF(qu = qu, lam = lam, theta = inSig), 
                                       data = input[["train"]], sp = mainFit$sp)
                            
                            pred <- predict(fit, newdata = input[["test"]], se = TRUE)
@@ -37,12 +36,12 @@ tuneLearnCV <- function(form, data, nrep, sig, tau, lamba = 0.1, ncores = 1, K =
       
     } else {
       
-      mainFit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = inSig), data = data)
+      mainFit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = inSig), data = data)
       
       coverage <- sapply(sets, 
                          function(input)
                          {
-                           fit <- gam(form, family = logFlss2(tau = tau, lam = lam, offset = inSig), 
+                           fit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = inSig), 
                                       data = input[["train"]], sp = mainFit$sp)
                            
                            pred <- predict(fit, newdata = data, se = TRUE)
