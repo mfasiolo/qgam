@@ -30,21 +30,17 @@ qqVett <- function(y, mu){
   return( out )
 }
 
-
-#### Andreson-Darling test for STANDARD normality
-.adTest <- function(.x){
+#### Does stuff like "predict", "aic", etcetera
+qdo <- function(obj, qu, fun, ...){
   
-  n <- length(.x)
-  .x <- sort(.x)
+  if( !(qu %in% obj[["tau"]]) ) stop("qu is not in obj[[\"tau\"]].")
+    
+  tmpObj <- obj[["fit"]][[ which(obj[["tau"]] == qu) ]]
   
-  # Cramer-von Mises statistic 
-  # out <- 1/(12*n) + sum( ((2*1:n - 1)/(2*n) - pnorm(.x))^2 )
+  tmpObj[["model"]] <- obj[["model"]]
+  tmpObj[["smooth"]] <- obj[["smooth"]]
   
-  logp1 <- pnorm(.x, log.p = TRUE)
-  logp2 <- pnorm(.x, lower.tail = F, log.p = TRUE)
-  
-  h <- (2 * seq(1:n) - 1) * (logp1 + rev(logp2))
-  out <- -n - mean(h)
+  out <- fun(tmpObj, ...)
   
   return( out )
 }
