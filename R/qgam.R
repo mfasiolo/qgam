@@ -15,57 +15,42 @@
 
 qgam <- function(form, data, qu, lsigma = NULL, err = 0.01, ncores = 1, control = list(), controlGam = list())
 {
-  nt <- length(qu)
+  if( length(qu) > 1 ) stop("length(qu) > 1: you should use mqgam")
   
   # Initial Gaussian fit
-  gausFit <- gam(form, data = data, control = controlGam)
-  control[["gausFit"]] <- gausFit
-  
-  # Output list
-  out <- list()
-  
-  if( is.null(lsigma) ) { # Selecting the learning rate sigma OR ....
-    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = control)
-    lsigma <- learn$lsigma
-    out[["calibr"]] <- learn
-  } else { # ... use the one provided by the user
-    if( length(lsigma) == 1 ) {
-      lsigma <- rep(lsigma, nt)
+  if( is.null(control[["gausFit"]]) )
+  {
+    if( is.formula(form) ){
+      gausFit <- gam(form, data = data)
     } else {
-      if( length(lsigma) != nt ) stop("lsigma should either be scalar of a vector of length(qu) ")
-    } }
-  
+      gausFit <- gam(form, data = data, family = gaulss(b=0))
+    }
+    control[["gausFit"]] <- gausFit
+  }
 
-  # Selection lambda
-  lam <- err * sqrt(2*pi*gausFit$sig2) / (2*log(2)*exp(lsigma))
+  # Selecting the learning rate sigma
+  if( is.null(lsigma) ) {  
+    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu,
+                           ncores = ncores, control = control, controlGam = controlGam)
+    lsigma <- learn$lsigma
+  }
   
-  # Fitting a quantile model for each qu
-  out[["fit"]] <- lapply(1:nt, function(ii){
+  # Fit model
+  if( is.formula(form) ){ # Extended Gam OR .....
     
-    .out <- gam(form, family = logF(qu = qu[ii], lam = lam[ii], theta = lsigma[ii]), data = data)
+    lam <- err * sqrt(2*pi*gausFit$sig2) / (2*log(2)*exp(lsigma))
     
-    # Removing data and smooth matrix to reduce memory requirements. There quantities
-    # are kept only inside the first fit ( qfit[[1]] )
-    if(ii > 1){
-      .out$model  <- NULL
-      .out$smooth <- NULL 
-    } 
-        
-    return( .out )
-  })
+    fit <- gam(form, family = logF(qu = qu, lam = lam, theta = lsigma), data = data, control = controlGam)
+    
+  } else { # .... Gamlss
+    
+    lam <- err * sqrt(2*pi/(gausFit$fit[ , 2]^2)) / (2*log(2)*exp(lsigma))
+    
+    fit <- gam(form, family = logFlss(qu = qu, lam = lam, offset = lsigma), data = data, control = controlGam)
+    
+  }
   
-  # Storing output list
-  names(out[["fit"]]) <- qu
-  out[["model"]] <- out[["fit"]][[1]][["model"]]
-  out[["smooth"]] <- out[["fit"]][[1]][["smooth"]]
-  out[["fit"]][[1]][["model"]] <- NULL
-  out[["fit"]][[1]][["smooth"]] <- NULL
-  
-  out[["qu"]] <- qu
-  out[["lambda"]] <- lam
-  out[["lsigma"]] <- lsigma
-  
-  return( out )
+  return( fit )
 }
 
 
