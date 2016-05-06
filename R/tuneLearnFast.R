@@ -14,14 +14,15 @@
 #' 
 
 tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL, 
-                          ncores = 1,  control = list())
+                          ncores = 1, control = list(), controlGam = list())
 { 
   # Setting up control parameter
   ctrl <- list( "init" = NULL,
                 "brac" = log(c(0.5, 2)), 
-                "K" = 50,
+                "K" = 20,
                 "gausFit" = NULL,
                 "tol" = 1e-2,
+                "b" = 0,
                 "verbose" = TRUE )
   
   # Checking if the control list contains unknown names
@@ -32,8 +33,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   brac <- ctrl[["brac"]]
   
   # Sanity check
-  if( tol > 0.1 * abs(diff(brac)) ) 
-    stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
+  if( tol > 0.1 * abs(diff(brac)) ) stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
   
   # (Optional) create K boostrap dataset
   if( is.null(boot) ){
@@ -47,7 +47,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     if( plyr:::is.formula(form) ) {
       ctrl[["gausFit"]] <- gam(form, data = data)
     } else {
-      ctrl[["gausFit"]] <- gam(form, data = data, family = gaulss)
+      ctrl[["gausFit"]] <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]))
     } }
   
   # Order quantiles so that those close to the median are dealt with first
@@ -55,24 +55,29 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   
   # (Optional) Initializing the search range for sigma
   if( is.null(ctrl[["init"]]) ){
-    # We assume lam~0 and we match the variance of a symmetric Laplace density with that of the Gaussian fit.
-    # We use the value of qu that is the closest to 0.5
-    tmp <- qu[ oQu[1] ]
-    isig <- log(sqrt(  ctrl$gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+    # We assume lam~0 and we match the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
+    # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
+    tmp <- 0.5 #qu[ oQu[1] ]
+    if( !is.list(formula) ){
+      isig <- log(sqrt( ctrl$gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+    } else {
+      isig <- log(sqrt( (ctrl[["b"]]+exp(coef(ctrl$gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+    }
   } else {
     isig <- ctrl[["init"]]
   }
-  
+    
   # Initial search range
   brac <- ctrl$brac
   srange <- isig + brac
-
+  
   # Initialize
   nt <- length(qu)
-
+  
   # Estimated learning rates, # of bracket expansions, error rates and bracket ranges used in bisection
   sigs <- efacts <- errors <- numeric(nt)
   rans <- matrix(NA, nt, 2)
+  store <- vector("list", nt)
   names(sigs) <- names(errors) <- rownames(rans) <- qu
   
   # Here we need bTol > aTol otherwise we the new bracket will be too close to probable solution
@@ -92,8 +97,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
       
       # Estimate log(sigma)
       res  <- .tuneLearnFast(form = form, data = data, qu = qu[oi], err = err,
-                             boot = boot, srange = srange, ncores = ncores, ctrl = ctrl)  
+                             boot = boot, srange = srange, ncores = ncores, ctrl = ctrl, ctrlGam = controlGam)  
       
+      store[[ii]] <- cbind(store[[ii]], res[["store"]])
       lsig <- res$minimum
       
       # If solution not too close to boundary store results and determine bracket for next iter
@@ -144,7 +150,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     }
   }
   
-  out <- list("lsigma" = sigs, "err" = errors, "ranges" = rans)
+  names(sigs) <- qu
+  
+  out <- list("lsigma" = sigs, "err" = errors, "ranges" = rans, "store" = store)
   
   return( out )
 }
@@ -152,17 +160,17 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
 ##########################################################################
 ### Internal version, which works with scalar qu
 ########################################################################## 
-.tuneLearnFast <- function(form, data, boot, qu, err, srange, ncores, ctrl)
+.tuneLearnFast <- function(form, data, boot, qu, err, srange, ncores, ctrl, ctrlGam)
 {
   n <- nrow(data)
   
   # Objective function to be minimized
   obj <- function(lsig)
   {
-    lam <- err * sqrt(2*pi*ctrl$gausFit$sig2) / (2*log(2)*exp(lsig)) 
-    
     # Extended Gam or ...
     if( plyr:::is.formula(form) ){
+      
+      lam <- err * sqrt(2*pi*ctrl$gausFit$sig2) / (2*log(2)*exp(lsig))
       
       mainFit <- gam(form, family = logF(qu = qu, lam = lam, theta = lsig), data = data)
       
@@ -181,13 +189,15 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
       
     } else { #... Gamlss
       
-      mainFit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = lsig), data = data)
+      lam <- err * sqrt(2*pi/(ctrl$gausFit$fit[ , 2]^2)) / (2*log(2)*exp(lsig))
+      
+      mainFit <- gam(form, family = logFlss(qu = qu, lam = lam, offset = lsig), data = data)
       
       z <- sapply(boot, 
                   function(input)
                   {
-                    fit <- gam(form, family = logFlss2(qu = qu, lam = lam, offset = lsig), 
-                               data = input, sp = mainFit$sp)
+                    fit <- gam(form, family = logFlss(qu = qu, lam = lam, offset = lsig), 
+                               data = input, sp = mainFit$sp, start = coef(mainFit))
                     
                     pred <- predict(fit, newdata = data, se = TRUE)
                     
@@ -207,7 +217,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   # If we get convergence error, we increase "err" up to 0.2. I the error persists (or if the 
   # error is of another nature) we throw an error
   repeat{
-    res <- tryCatch(optimize(obj, srange, tol = ctrl$tol), error = function(e) e)
+    res <- tryCatch(.brent(brac=srange, f=obj, t = ctrl$tol), error = function(e) e)
+    #res <- tryCatch(.brent()optimize(obj, srange, tol = ctrl$tol), error = function(e) e)
     
     if("error" %in% class(res)){
       if( grepl("can't correct step size", res) ) {

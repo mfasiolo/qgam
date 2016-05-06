@@ -62,9 +62,8 @@ qdo <- function(obj, qu, fun, ...){
 
 ####### Visual checks for mqgam()
 
-checkMQGam <- function(obj)
+checkLearn <- function(cal)
 {  
-  cal <- obj$calibr
   est <- cal$store
   brac <- cal$ranges
   lsigma <- cal$lsigma
@@ -76,7 +75,7 @@ checkMQGam <- function(obj)
   layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), 
          heights=c(2, 1))
   oldPar <- par(mai = c(1, 1, 0.1, 0.1))
-  plot(qu, lsigma, ylim = range(as.vector(brac)), xlim = range(qu), col = 2, 
+  plot(qu, lsigma, ylim = range(as.vector(brac)), xlim = range(qu)+c(-1e-5,+1e-5), col = 2, 
        ylab = expression("Log(" * sigma * ")"), xlab = "Quantile")
   points(qu, brac[ , 1], pch = 3)
   points(qu, brac[ , 2], pch = 3)
@@ -96,7 +95,7 @@ checkMQGam <- function(obj)
     plot(sort(est[[ii]][1, ]), est[[ii]][2, order(est[[ii]][1, ])], 
          main = substitute(Quantile == x, list(x = round(qu[ii], 3))), 
          ylab = "loss", xlab = expression(log(sigma)), type = 'b')
-    abline(v = est[[ii]][1, which.min(est[[ii]][2, ])])
+    abline(v = est[[ii]][1, which.min(est[[ii]][2, ])], col = 2)
     
     if(ii %% (pDim^2) == 0) readline(prompt = "Press <Enter> to see the next plot...")
   }

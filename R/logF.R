@@ -39,7 +39,7 @@
 ## Modified log-F density
 #######################
 
-logF <- function (theta = NULL, link = "identity", qu = NULL, lam = NULL) { 
+logF <- function (theta = NULL, link = "identity", qu, lam) { 
   ## Extended family object for modified log-F, to allow direct estimation of theta
   ## as part of REML optimization. Currently the template for extended family objects.
   ## length(theta)=1; log theta supplied. 
@@ -70,33 +70,44 @@ logF <- function (theta = NULL, link = "identity", qu = NULL, lam = NULL) {
     
   } else iniTheta <- 0 ## inital log theta value
   
-  env <- new.env(parent = .GlobalEnv)
+  env <- new.env(parent = environment(logF)) #.GlobalEnv) ##########!!!!!!!!!!!!!!!!~########################
+  
   assign(".Theta", iniTheta, envir = env)
   getTheta <- function(trans=FALSE) if (trans) exp(get(".Theta")) else get(".Theta")
   putTheta <- function(theta) assign(".Theta", theta, envir=environment(sys.function()))
   
   assign(".tau", tau, envir = env)
+  getTau <- function( ) get(".tau")
+  putTau <- function(tau) assign(".tau", tau, envir=environment(sys.function()))
+  
   assign(".lam", lam, envir = env)
+  getLam <- function( ) get(".lam")
+  putLam <- function(lam) assign(".lam", lam, envir=environment(sys.function()))
   
   # variance <- function(mu) exp(get(".Theta"))  ##### XXX ##### Necessary?
   
   validmu <- function(mu) all( is.finite(mu) )
   
   dev.resids <- function(y, mu, wt, theta=NULL) {        ##### XXX #####
-                                                         if (is.null(theta)) theta <- get(".Theta")
-                                                         sig <- exp(theta)
-                                                         
-                                                         tau <- get(".tau")
-                                                         lam <- get(".lam")
-                                                         
-                                                         z <- (y - mu) / sig
-                                                         
-                                                         term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
-                                                         
-                                                         2 * wt * term
+    if( is.null(theta) ) theta <- get(".Theta")
+    tau <- get(".tau")
+    lam <- get(".lam")
+    
+    sig <- exp(theta)
+    
+    
+    z <- (y - mu) / sig
+    
+    term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
+    
+    2 * wt * term
   }
   
   Dd <- function(y, mu, theta, wt, level=0) {
+    
+    tau <- get(".tau")
+    lam <- get(".lam")
+    
     ## derivatives of the deviance...
     sig <- exp(theta)
     
@@ -159,6 +170,8 @@ logF <- function (theta = NULL, link = "identity", qu = NULL, lam = NULL) {
   }
   
   ls <- function(y, w, n, theta, scale) { ##### XXX n is number of observations?
+    tau <- get(".tau")
+    lam <- get(".lam")
     ## the log saturated likelihood function.
     sig <- exp(theta)
     
@@ -197,9 +210,11 @@ logF <- function (theta = NULL, link = "identity", qu = NULL, lam = NULL) {
   #   }
   
   
-  environment(dev.resids) <- environment(aic) <- environment(getTheta) <- 
+  environment(dev.resids) <- environment(ls) <- environment(aic) <- environment(Dd) <- environment(getTheta) <-
     #  environment(rd)<- environment(qf) <- environment(variance) <- 
-    environment(putTheta) <- env
+    environment(putTheta) <- environment(putLam) <- environment(getLam) <-
+    environment(putTau) <- environment(getTau) <- env
+  
   structure(list(family = "logF", link = linktemp, linkfun = stats$linkfun,
                  linkinv = stats$linkinv, dev.resids = dev.resids,Dd=Dd,
                  #variance=variance,
@@ -207,7 +222,9 @@ logF <- function (theta = NULL, link = "identity", qu = NULL, lam = NULL) {
                  #postproc=postproc,
                  ls=ls,
                  validmu = validmu, valideta = stats$valideta, n.theta=n.theta, 
-                 ini.theta = iniTheta,putTheta=putTheta,getTheta=getTheta, 
+                 ini.theta = iniTheta, putTheta=putTheta,getTheta=getTheta, 
+                 putTau=putTau, getTau=getTau, 
+                 putLam=putLam,getLam=getLam, 
                  use.wz=TRUE
                  #, rd=rd,qf=qf
   ),

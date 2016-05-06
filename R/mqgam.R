@@ -65,9 +65,9 @@ mqgam <- function(form, data, qu, lsigma = NULL, err = 0.01, ncores = 1, control
   out[["fit"]][[1]][["model"]] <- NULL
   out[["fit"]][[1]][["smooth"]] <- NULL
   
-  out[["qu"]] <- qu
-  out[["lambda"]] <- lam
-  out[["lsigma"]] <- lsigma
+#   out[["qu"]] <- qu
+#   out[["lambda"]] <- lam
+#   out[["lsigma"]] <- lsigma
   
   return( out )
 }

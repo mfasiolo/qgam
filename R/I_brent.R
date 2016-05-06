@@ -1,6 +1,7 @@
 
 #*****************************************************************************
-# Shamelessly copied (and translated) from Burkardt's website https://people.sc.fsu.edu/~jburkardt/m_src/brent/local_min.m
+# Shamelessly copied (and translated) from Burkardt's 
+# website https://people.sc.fsu.edu/~jburkardt/m_src/brent/local_min.m
 #
 ## LOCAL_MIN seeks a local minimum of a function F(X) in an interval [A,B].
 #
