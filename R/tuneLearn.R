@@ -63,7 +63,6 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
                                sp = mainFit[[1]]$sp, control = controlGam, fit = FALSE)
                    
                    .z <- matrix(NA, nt, n)
-                   
                    for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
                    {   
                      bObj$lsp0 <- log( mainFit[[ii]]$sp )
@@ -71,11 +70,16 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
                      bObj$family$putTheta( lsig[ii] )
                      
                      fit <- gam(G = bObj, start = init)
+                     
+                     # Create prediction design matrix (only in first iteration)
+                     if(ii == nt) { pMat <- predict.gam(fit, newdata = data, type = "lpmatrix") }
+                     
                      init <- coef(fit)
                      
-                     pred <- predict(fit, newdata = data, se = TRUE)
+                     mu <- pMat %*% init
+                     sdev <- sqrt( diag( pMat%*%fit$Vp%*%t(pMat) ) )
                      
-                     .z[ii, ] <- (as.matrix(pred$fit)[ , 1] - as.matrix(mainFit[[ii]]$fit)[ , 1]) / as.matrix(pred$se.fit)[ , 1]
+                     .z[ii, ] <- (as.matrix(mu)[ , 1] - as.matrix(mainFit[[ii]]$fit)[ , 1]) / as.matrix(sdev)[ , 1]
                    }
                    
                    return( .z )
