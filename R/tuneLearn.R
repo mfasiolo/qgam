@@ -65,21 +65,31 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
                    .z <- matrix(NA, nt, n)
                    for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
                    {   
+                     print(ii)
                      bObj$lsp0 <- log( mainFit[[ii]]$sp )
                      bObj$family$putLam( mainFit[[ii]]$lam )
                      bObj$family$putTheta( lsig[ii] )
                      
                      fit <- gam(G = bObj, start = init)
+                     init <- betas <- coef(fit)
                      
                      # Create prediction design matrix (only in first iteration)
-                     if(ii == nt) { pMat <- predict.gam(fit, newdata = data, type = "lpmatrix") }
+                     if(ii == nt) { 
+                       pMat <- predict.gam(fit, newdata = data, type = "lpmatrix") 
+                       lpi <- attr(pMat, "lpi")
+                       if( !is.null(lpi) ){ pMat <- pMat[ , lpi[[1]]] }
+                     }
                      
-                     init <- coef(fit)
+                     # In the gamlss case, we are interested only in the calibrating the location mode
+                     if( !is.null(lpi) ){
+                       betas <- betas[lpi[[1]]]
+                       Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
+                     }
                      
-                     mu <- pMat %*% init
-                     sdev <- sqrt( diag( pMat%*%fit$Vp%*%t(pMat) ) )
+                     mu <- pMat %*% betas
+                     sdev <- sqrt( diag( pMat%*%Vp%*%t(pMat) ) )
                      
-                     .z[ii, ] <- (as.matrix(mu)[ , 1] - as.matrix(mainFit[[ii]]$fit)[ , 1]) / as.matrix(sdev)[ , 1]
+                     .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
                    }
                    
                    return( .z )
