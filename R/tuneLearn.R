@@ -20,7 +20,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   # Create K boostrap dataset
   ind <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
   boot <- lapply(ind, function(ff) data[ff, ] )
-  
+
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
     fam <- "logF"
@@ -49,7 +49,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     
     initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
     
-    mainFit[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "lam" = lam)
+    mainFit[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "lam" = fit$family$getLam())
   }
   
   # Fitting bootstrapped datasets
@@ -65,13 +65,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
                    .z <- matrix(NA, nt, n)
                    for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
                    {   
-                     print(ii)
                      bObj$lsp0 <- log( mainFit[[ii]]$sp )
                      bObj$family$putLam( mainFit[[ii]]$lam )
                      bObj$family$putTheta( lsig[ii] )
                      
                      fit <- gam(G = bObj, start = init)
                      init <- betas <- coef(fit)
+                     Vp <- fit$Vp
                      
                      # Create prediction design matrix (only in first iteration)
                      if(ii == nt) { 
@@ -100,7 +100,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   loss <- apply(z, 1, function(.x) .adTest(as.vector(.x)))
   names(loss) <- lsig
   
-  return( list("loss" = loss) )
+  return( loss )
 }
 
 

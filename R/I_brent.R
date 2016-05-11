@@ -70,7 +70,7 @@
 #    Output, real FX, the value F(X).
 #
 
-.brent <- function(brac, f, t = .Machine$double.eps^0.25, ...)
+.brent <- function(brac, f, mObj, bObj, init, t = .Machine$double.eps^0.25, ...)
 {
   brac <- sort(brac)
   a <- brac[1]
@@ -88,14 +88,16 @@
   w = x
   v = w
   e = 0.0
-  fx = f(x, ...)
+  feval = f(lsig = x, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], pMat = init[["pMat"]], ...)
+  fx = feval$loss
   fw = fx
   fv = fw
   
   # Storing all evaluations points and function values
   jj <- 1
   store <- list()
-  store[[jj]] <- c("x" = x, "f" = fx)
+  store[[jj]] <- list("x" = x, "f" = fx, "initM" = feval[["initM"]], "initB" = feval[["initB"]])
+  pMat <- feval[["pMat"]]
   jj <- jj + 1
   
   while( TRUE ) {
@@ -155,9 +157,10 @@
       if ( 0.0 < d ) { u = x + tol } else { u = x - tol }
     }
     
-    
-    fu = f(u, ...)
-    store[[jj]] <- c("x" = u, "f" = fu)
+    init <- store[[ which.min(abs(u - sapply(store, "[[", "x"))) ]]
+    feval = f(lsig = u, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], pMat = pMat, ...)
+    fu = feval$loss
+    store[[jj]] <- list("x" = u, "f" = fu, "initM" = feval[["initM"]], "initB" = feval[["initB"]])
     jj <- jj + 1
     
     #  Update A, B, V, W, and X.
@@ -190,7 +193,9 @@
     }
   }
   
-  return( list("minimum" = x, "objective" = fx, "store" = do.call("cbind", store)) )
+  store <- rbind( sapply(store, "[[", "x"), sapply(store, "[[", "f") )
+  
+  return( list("minimum" = x, "objective" = fx, "store" = store) )
 }
 
 ###################
