@@ -39,16 +39,21 @@
 ## Modified log-F density
 #######################
 
-logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL) 
+logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TRUE) 
 { 
   tau <- 1 - qu
-
+  
+  if( !remInter ){
+    if( theta != 0 ){ stop("remInter == FALSE, but theta != 0") }
+    theta <- 0 }
+  
   ## Extended family object for modified log-F, to allow direct estimation of theta
   ## as part of REML optimization. Currently the template for extended family objects.
   ## length(theta)=2; log theta supplied. 
   ## Written by Matteo Fasiolo.
+  ## first deal with links and their derivatives...
   if (length(link)!=2) stop("logFlss requires 2 links specified as character strings")
-  okLinks <- list(c("inverse", "log", "identity","sqrt"), "log")
+  okLinks <- list(c("inverse", "log", "identity", "sqrt"), "log")
   stats <- list()
   param.names <- c("mu", "sigma")
   for (i in 1:2) {
@@ -63,14 +68,32 @@ logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL)
     stats[[i]]$d4link <- fam$d4link
   } 
   
+  env <- new.env(parent = .GlobalEnv)
+  
+  assign(".tau", tau, envir = env)
+  getTau <- function( ) get(".tau")
+  putTau <- function(tau) assign(".tau", tau, envir=environment(sys.function()))
+  
+  assign(".lam", lam, envir = env)
+  getLam <- function( ) get(".lam")
+  putLam <- function(lam) assign(".lam", lam, envir=environment(sys.function()))
+  
+  assign(".theta", theta, envir = env)
+  getTheta <- function( ) get(".theta")
+  putTheta <- function(theta) assign(".theta", theta, envir=environment(sys.function()))
+  
   # variance <- function(mu) exp(get(".Theta"))  ##### XXX ##### Necessary?
   
   # validmu <- function(mu) all( is.finite(mu) )
   
   residuals <- function(object, type = c("deviance", "response")) {
     
+    tau <- get(".tau")
+    theta <- get(".theta")
+    lam <- get(".lam")
+    
     mu <- object$fitted[ , 1]
-    sig <- object$fitted[ , 2]
+    sig <- object$fitted[ , 2] * exp(theta)
     
     type <- match.arg(type)
     
@@ -107,11 +130,15 @@ logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL)
     ##        2 - diagonal of first deriv of Hess
     ##        3 - first deriv of Hess
     ##        4 - everything.
+    tau <- get(".tau")
+    theta <- get(".theta")
+    lam <- get(".lam")
+    
     jj <- attr(X,"lpi") ## extract linear predictor index
     eta <- X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]
     mu <- family$linfo[[1]]$linkinv(eta)
-    eta1 <- X[,jj[[2]],drop=FALSE]%*%coef[jj[[2]]]
-    sig <-  family$linfo[[2]]$linkinv(eta1) ## tau = 1/sig here
+    eta1 <- X[,jj[[2]],drop=FALSE]%*%coef[jj[[2]]] + theta
+    sig <-  family$linfo[[2]]$linkinv(eta1) 
     
     n <- length(y)
     l1 <- matrix(0,n,2)
@@ -218,7 +245,8 @@ logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL)
       } else startji <- pen.reg(x1,e1,yt1)
       start[jj[[1]]] <- startji
       lres1 <- log(abs(y-family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%start[jj[[1]]])))
-      x1 <-  x[,jj[[2]],drop=FALSE];e1 <- E[,jj[[2]],drop=FALSE]
+      x1 <-  x[,jj[[2]],drop=FALSE];
+      e1 <- E[,jj[[2]],drop=FALSE]
       #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
       if (use.unscaled) {
         x1 <- rbind(x1,e1)
@@ -244,12 +272,16 @@ logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL)
   #     qnbinom(p,size=Theta,mu=mu)
   #   }
   
+  environment(putTheta) <- environment(getTheta) <- environment(putLam) <- environment(getLam) <- 
+    environment(ll) <- environment(residuals) <- environment(putTau) <- environment(getTau) <- env
   
   structure(list(family="logFlss",ll=ll,link=paste(link),nlp=2,
                  tri = mgcv:::trind.generator(2), ## symmetric indices for accessing derivative arrays
                  initialize=initialize,
+                 drop.intercept = c(FALSE, remInter),
                  #postproc=postproc,
                  residuals=residuals,
+                 getLam = getLam, putLam = putLam, getTheta = getTheta, putTheta = putTheta, putTau=putTau, getTau=getTau, 
                  #rd=rd,
                  #predict=predict,
                  linfo = stats, ## link information list
@@ -258,3 +290,4 @@ logFlss <- function (link = list("identity", "log"), qu = NULL, lam = NULL)
                  available.derivs = 2 ## can use full Newton here
   ),class = c("general.family","extended.family","family"))
 } ## logF
+
