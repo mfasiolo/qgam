@@ -1,3 +1,7 @@
 exportPattern("^[[:alpha:]]+")
 
-importFrom(plyr, "is.formula")
+importFrom(plyr, "is.formula", "llply", "mlply")
+
+importFrom(doSNOW, "registerDoSNOW")
+
+importFrom(parallel, "makeCluster", "stopCluster", "detectCores")

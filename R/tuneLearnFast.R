@@ -14,7 +14,8 @@
 #' 
 
 tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL, 
-                          ncores = 1, control = list(), controlGam = list())
+                          multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
+                          control = list(), controlGam = list())
 { 
   n <- nrow(data)
   
@@ -25,11 +26,21 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
                 "gausFit" = NULL,
                 "tol" = .Machine$double.eps^0.25,
                 "b" = 0,
-                "verbose" = TRUE )
+                "verbose" = FALSE )
   
   # Checking if the control list contains unknown names
   # Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
+  
+  if( multicore ){ 
+    # Making sure "qgam" is loaded on clutser and collate user-specified packages
+    paropts[[".packages"]] <- unique( c("qgam", paropts[[".packages"]]) )
+    tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
+    cluster <- tmp$cluster
+    ncores <- tmp$ncores
+    clusterCreated <- tmp$clusterCreated
+    registerDoSNOW(cluster)
+  }
   
   tol <- ctrl[["tol"]]
   brac <- ctrl[["brac"]]
@@ -67,7 +78,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   } else {
     isig <- ctrl[["init"]]
   }
-    
+  
   # Initialize
   nq <- length(qu)
   
@@ -93,8 +104,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
       srange <- isig + ef * brac
       
       # Estimate log(sigma)
-      res  <- .tuneLearnFast(form = form, data = data, qu = qu[oi], err = err,
-                             boot = boot, srange = srange, ncores = ncores, control = ctrl, controlGam = controlGam)  
+      res  <- .tuneLearnFast(form = form, data = data, qu = qu[oi], err = err, boot = boot, srange = srange, 
+                             multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
+                             control = ctrl, controlGam = controlGam)  
       
       store[[oi]] <- cbind(store[[oi]], res[["store"]])
       lsig <- res$minimum
@@ -152,13 +164,18 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   
   out <- list("lsigma" = sigs, "err" = errors, "ranges" = rans, "store" = store)
   
+  # Close the cluster if it was opened inside this function
+  if(multicore && clusterCreated) stopCluster(cluster)
+  
   return( out )
 }
 
 ##########################################################################
 ### Internal version, which works with scalar qu
 ########################################################################## 
-.tuneLearnFast <- function(form, data, boot, qu, err, srange, ncores, control, controlGam)
+.tuneLearnFast <- function(form, data, boot, qu, err, srange, 
+                           multicore, cluster, ncores, paropts, 
+                           control, controlGam)
 {
   n <- nrow(data)
   nbo <- length(boot)
@@ -186,7 +203,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
                sp = gausFit$sp, control = controlGam, fit = FALSE)
     return( out )
   })
-
+  
   # Objective function to be minimized
   # GLOBALS: varHat 
   objFun <- function(lsig, mObj, bObj, initM, initB, pMat)
@@ -199,45 +216,25 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     
     initM <- list("start" = coef(mFit), "in.out" = list("sp" = mFit$sp, "scale" = 1))
     
-    out <- mapply(function(.obj, .init, .pMat)
-    {
-      .obj$lsp0 <- log( mFit$sp )
-      .obj$family$putLam( lam )
-      .obj$family$putTheta( lsig )
-      
-      fit <- gam(G = .obj, start = .init)
+    tmpDat <- as.data.frame( cbind(bObj, initB, pMat) )
+    names(tmpDat) <- c(".obj", ".init", ".pMat")
     
-      .init <- betas <- coef(fit)
-      Vp <- fit$Vp
-      
-      # Create prediction design matrix (only in first iteration)
-      if( is.null(.pMat) ) { 
-        .pMat <- predict.gam(fit, newdata = data, type = "lpmatrix") 
-        lpi <- attr(.pMat, "lpi")
-        if( !is.null(lpi) ){ 
-          .pMat <- .pMat[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
-          attr(.pMat, "lpi") <- lpi 
-          }
-      }
-      
-      # In the gamlss case, we are interested only in the calibrating the location model
-      lpi <- attr(.pMat, "lpi")
-      if( !is.null(lpi) ){
-        betas <- betas[lpi[[1]]]
-        Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
-      }
-      
-      #print(length(betas))
-      
-      mu <- .pMat %*% betas
-      sdev <- sqrt( diag( .pMat%*%Vp%*%t(.pMat) ) )
-      
-      .z <- (mu - as.matrix(mFit$fit)[ , 1]) / sdev
-      
-      return( list("z" = .z, "init" = .init, "pMat" = .pMat) )
-    }
-    , bObj, initB, pMat, SIMPLIFY = FALSE)
-  
+    # Loop over bootstrap datasets to get standardized deviations from full data fit
+    withCallingHandlers({
+      out <- mlply(.data = tmpDat,
+                   .fun = .funToApplyTuneLearnFast,
+                   .parallel = multicore,
+                   .inform = control[["verbose"]],
+                   .paropts = paropts,
+                   ### ... arguments start here
+                   .mFit = mFit, .lam = lam, .lsig = lsig, .fData = data
+      ) 
+    }, warning = function(w) {
+      # There is a bug in plyr concerning a useless warning about "..."
+      if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
+        invokeRestart("muffleWarning")
+    })
+    
     loss <- .adTest( as.vector(sapply(out, "[[", "z")) )
     initB <- lapply(out, "[[", "init")
     pMat <- lapply(out, "[[", "pMat")
@@ -270,5 +267,50 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   res[["err"]] <- err
   
   return( res )
+}
+
+
+###########
+# Function that fits a single bootstrapped dataset (.obj) using a certain initialization (.init)
+# and prediction matrix (.pMat). It returns standardized deviations from full data fit. 
+# To be run in parallel (over boostrapped datasets) by .tuneLearnFast()
+###########
+.funToApplyTuneLearnFast <- function(.obj, .init, .pMat, .mFit, .lam, .lsig, .fData)
+{
+  # For some reason I have to do this
+  .obj <- .obj[[1]]; .init <- .init[[1]]; .pMat <- .pMat[[1]]
+  
+  .obj$lsp0 <- log( .mFit$sp )
+  .obj$family$putLam( .lam )
+  .obj$family$putTheta( .lsig )
+  
+  fit <- gam(G = .obj, start = .init)
+  
+  .init <- betas <- coef(fit)
+  Vp <- fit$Vp
+  
+  # Create prediction design matrix (only in first iteration)
+  if( is.null(.pMat) ) { 
+    .pMat <- predict.gam(fit, newdata = .fData, type = "lpmatrix") 
+    lpi <- attr(.pMat, "lpi")
+    if( !is.null(lpi) ){ 
+      .pMat <- .pMat[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
+      attr(.pMat, "lpi") <- lpi 
+    }
+  }
+  
+  # In the gamlss case, we are interested only in the calibrating the location model
+  lpi <- attr(.pMat, "lpi")
+  if( !is.null(lpi) ){
+    betas <- betas[lpi[[1]]]
+    Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
+  }
+  
+  mu <- .pMat %*% betas
+  sdev <- sqrt( diag( .pMat%*%Vp%*%t(.pMat) ) )
+  
+  .z <- (mu - as.matrix(.mFit$fit)[ , 1]) / sdev
+  
+  return( list("z" = .z, "init" = .init, "pMat" = .pMat) )
 }
 
