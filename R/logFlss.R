@@ -41,7 +41,6 @@
 
 logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TRUE) 
 { 
-  tau <- 1 - qu
   
   if( !remInter ){
     if( theta != 0 ){ stop("remInter == FALSE, but theta != 0") }
@@ -70,9 +69,9 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
   
   env <- new.env(parent = .GlobalEnv)
   
-  assign(".tau", tau, envir = env)
-  getTau <- function( ) get(".tau")
-  putTau <- function(tau) assign(".tau", tau, envir=environment(sys.function()))
+  assign(".qu", qu, envir = env)
+  getQu <- function( ) get(".qu")
+  putQu <- function(qu) assign(".qu", qu, envir=environment(sys.function()))
   
   assign(".lam", lam, envir = env)
   getLam <- function( ) get(".lam")
@@ -88,7 +87,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
   
   residuals <- function(object, type = c("deviance", "response")) {
     
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     theta <- get(".theta")
     lam <- get(".lam")
     
@@ -130,7 +129,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     ##        2 - diagonal of first deriv of Hess
     ##        3 - first deriv of Hess
     ##        4 - everything.
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     theta <- get(".theta")
     lam <- get(".lam")
     
@@ -273,7 +272,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
   #   }
   
   environment(putTheta) <- environment(getTheta) <- environment(putLam) <- environment(getLam) <- 
-    environment(ll) <- environment(residuals) <- environment(putTau) <- environment(getTau) <- env
+    environment(ll) <- environment(residuals) <- environment(putQu) <- environment(getQu) <- env
   
   structure(list(family="logFlss",ll=ll,link=paste(link),nlp=2,
                  tri = mgcv:::trind.generator(2), ## symmetric indices for accessing derivative arrays
@@ -281,7 +280,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
                  drop.intercept = c(FALSE, remInter),
                  #postproc=postproc,
                  residuals=residuals,
-                 getLam = getLam, putLam = putLam, getTheta = getTheta, putTheta = putTheta, putTau=putTau, getTau=getTau, 
+                 getLam = getLam, putLam = putLam, getTheta = getTheta, putTheta = putTheta, putQu=putQu, getQu=getQu, 
                  #rd=rd,
                  #predict=predict,
                  linfo = stats, ## link information list

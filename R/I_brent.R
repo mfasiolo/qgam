@@ -70,7 +70,7 @@
 #    Output, real FX, the value F(X).
 #
 
-.brent <- function(brac, f, mObj, bObj, init, t = .Machine$double.eps^0.25, ...)
+.brent <- function(brac, f, mObj, bObj, init, pMat, qu, varHat, cluster, t = .Machine$double.eps^0.25, ...)
 {
   brac <- sort(brac)
   a <- brac[1]
@@ -88,7 +88,8 @@
   w = x
   v = w
   e = 0.0
-  feval = f(lsig = x, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], pMat = init[["pMat"]], ...)
+  feval = f(lsig = x, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], 
+            pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, ...)
   fx = feval$loss
   fw = fx
   fv = fw
@@ -97,7 +98,6 @@
   jj <- 1
   store <- list()
   store[[jj]] <- list("x" = x, "f" = fx, "initM" = feval[["initM"]], "initB" = feval[["initB"]])
-  pMat <- feval[["pMat"]]
   jj <- jj + 1
   
   while( TRUE ) {
@@ -158,7 +158,8 @@
     }
     
     init <- store[[ which.min(abs(u - sapply(store, "[[", "x"))) ]]
-    feval = f(lsig = u, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], pMat = pMat, ...)
+    feval = f(lsig = u, mObj = mObj, bObj = bObj, initM = init[["initM"]], initB = init[["initB"]], 
+              pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, ...)
     fu = feval$loss
     store[[jj]] <- list("x" = u, "f" = fu, "initM" = feval[["initM"]], "initB" = feval[["initB"]])
     jj <- jj + 1

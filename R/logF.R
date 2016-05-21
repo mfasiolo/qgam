@@ -44,8 +44,6 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   ## as part of REML optimization. Currently the template for extended family objects.
   ## length(theta)=1; log theta supplied. 
   ## Written by Matteo Fasiolo.
-  tau <- 1 - qu
-  
   linktemp <- substitute(link)
   if (!is.character(linktemp)) linktemp <- deparse(linktemp)
   if (linktemp %in% c("log", "identity", "sqrt")) stats <- make.link(linktemp)
@@ -76,9 +74,9 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   getTheta <- function(trans=FALSE) if (trans) exp(get(".Theta")) else get(".Theta")
   putTheta <- function(theta) assign(".Theta", theta, envir=environment(sys.function()))
   
-  assign(".tau", tau, envir = env)
-  getTau <- function( ) get(".tau")
-  putTau <- function(tau) assign(".tau", tau, envir=environment(sys.function()))
+  assign(".qu", qu, envir = env)
+  getQu <- function( ) get(".qu")
+  putQu <- function(qu) assign(".qu", qu, envir=environment(sys.function()))
   
   assign(".lam", lam, envir = env)
   getLam <- function( ) get(".lam")
@@ -90,7 +88,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   
   dev.resids <- function(y, mu, wt, theta=NULL) {        ##### XXX #####
     if( is.null(theta) ) theta <- get(".Theta")
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     lam <- get(".lam")
     
     sig <- exp(theta)
@@ -105,7 +103,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   
   Dd <- function(y, mu, theta, wt, level=0) {
     
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     lam <- get(".lam")
     
     ## derivatives of the deviance...
@@ -159,7 +157,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     if (is.null(theta)) theta <- get(".Theta")
     sig <- exp(theta)
     
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     lam <- get(".lam")
     
     z <- (y - mu) / sig
@@ -170,7 +168,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   }
   
   ls <- function(y, w, n, theta, scale) { ##### XXX n is number of observations?
-    tau <- get(".tau")
+    tau <- 1 - get(".qu")
     lam <- get(".lam")
     ## the log saturated likelihood function.
     sig <- exp(theta)
@@ -213,7 +211,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   environment(dev.resids) <- environment(ls) <- environment(aic) <- environment(Dd) <- environment(getTheta) <-
     #  environment(rd)<- environment(qf) <- environment(variance) <- 
     environment(putTheta) <- environment(putLam) <- environment(getLam) <-
-    environment(putTau) <- environment(getTau) <- env
+    environment(putQu) <- environment(getQu) <- env
   
   structure(list(family = "logF", link = linktemp, linkfun = stats$linkfun,
                  linkinv = stats$linkinv, dev.resids = dev.resids,Dd=Dd,
@@ -223,7 +221,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
                  ls=ls,
                  validmu = validmu, valideta = stats$valideta, n.theta=n.theta, 
                  ini.theta = iniTheta, putTheta=putTheta,getTheta=getTheta, 
-                 putTau=putTau, getTau=getTau, 
+                 putQu=putQu, getQu=getQu, 
                  putLam=putLam,getLam=getLam, 
                  use.wz=TRUE
                  #, rd=rd,qf=qf

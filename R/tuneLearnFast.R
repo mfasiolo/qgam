@@ -18,12 +18,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
                           control = list(), controlGam = list())
 { 
   n <- nrow(data)
+  nq <- length(qu)
   
   # Setting up control parameter
   ctrl <- list( "init" = NULL,
                 "brac" = log( c(1/5, 5) ), 
                 "K" = 20,
-                "gausFit" = NULL,
                 "tol" = .Machine$double.eps^0.25,
                 "b" = 0,
                 "verbose" = FALSE )
@@ -31,16 +31,6 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   # Checking if the control list contains unknown names
   # Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
-  
-  if( multicore ){ 
-    # Making sure "qgam" is loaded on clutser and collate user-specified packages
-    paropts[[".packages"]] <- unique( c("qgam", paropts[[".packages"]]) )
-    tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
-    cluster <- tmp$cluster
-    ncores <- tmp$ncores
-    clusterCreated <- tmp$clusterCreated
-    registerDoSNOW(cluster)
-  }
   
   tol <- ctrl[["tol"]]
   brac <- ctrl[["brac"]]
@@ -54,13 +44,16 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     boot <- lapply(tmp, function(ff) data[ff, ] )
   }
   
-  # (Optional) Main Gaussian fit, used for initializations
-  if( is.null(ctrl[["gausFit"]]) ) {
-    if( plyr:::is.formula(form) ) {
-      ctrl[["gausFit"]] <- gam(form, data = data, control = controlGam)
-    } else {
-      ctrl[["gausFit"]] <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam)
-    } }
+  # Gaussian fit, used for initialization
+  if( is.formula(form) ) {
+    fam <- "logF"
+    gausFit <- gam(form, data = data, control = controlGam)
+    varHat <- gausFit$sig2
+  } else {
+    fam <- "logFlss"
+    gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam)
+    varHat <- 1/gausFit$fit[ , 2]^2
+  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Order quantiles so that those close to the median are dealt with first
   oQu <- order( abs(qu-0.5) )
@@ -71,24 +64,66 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
     if( !is.list(formula) ){
-      isig <- log(sqrt( 5 * ctrl$gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( 5 * gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     } else {
-      isig <- log(sqrt( 5 * (ctrl[["b"]]+exp(coef(ctrl$gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( 5 * (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     }
   } else {
     isig <- ctrl[["init"]]
   }
   
-  # Initialize
-  nq <- length(qu)
+  # Create gam object for full data fits
+  mObj <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
   
-  # Estimated learning rates, # of bracket expansions, error rates and bracket ranges used in bisection
+  # Create a gam object for each bootstrap sample
+  bObj <- lapply(boot, function(bdat){
+    out <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), data = bdat, 
+               sp = gausFit$sp, control = controlGam, fit = FALSE)
+    return( out )
+  })
+  
+  # Create prediction design matrices for each bootstrap sample
+  pMat <- lapply(bObj, function(.obj){
+    class( .obj ) <- c("gam", "glm", "lm") 
+    .obj$coefficients <- rep(0, ncol(.obj$X)) # Needed to fool predict
+    out <- predict.gam(.obj, newdata = data, type = "lpmatrix")
+    
+    # Calibration uses the linear predictor for the quantile location, we discard the rest 
+    lpi <- attr(out, "lpi")
+    if( !is.null(lpi) ){  
+      out <- out[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
+      attr(out, "lpi") <- lpi 
+    }
+    return( out )
+  })
+  
+  if( multicore ){ 
+    # Create cluster
+    tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
+    cluster <- tmp$cluster
+    ncores <- tmp$ncores
+    clusterCreated <- tmp$clusterCreated
+    registerDoSNOW(cluster)
+    
+    # Load "qgam" and user-specified packages
+    tmp <- unique( c("qgam", paropts[[".packages"]]) )
+    clusterExport(cluster, "tmp", envir = environment())
+    clusterEvalQ(cluster, { lapply(tmp, library, character.only = TRUE) })
+    paropts[[".packages"]] <- NULL
+    
+    # Export bootstrap objects, prediction matrix and user-defined stuff
+    tmp <- unique( c("bObj", "pMat", paropts[[".export"]]) )
+    clusterExport(cluster, tmp, envir = environment())
+    paropts[[".export"]] <- NULL
+  }
+
+  # Estimated learning rates, num of bracket expansions, error rates and bracket ranges used in bisection
   sigs <- efacts <- errors <- numeric(nq)
   rans <- matrix(NA, nq, 2)
   store <- vector("list", nq)
   names(sigs) <- names(errors) <- rownames(rans) <- qu
   
-  # Here we need bTol > aTol otherwise we the new bracket will be too close to probable solution
+  # Here we need bTol > aTol otherwise we the new bracket will be too close to the probable solution
   aTol <- 0.05
   bTol <- 0.2
   
@@ -103,15 +138,17 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
       # Compute bracket
       srange <- isig + ef * brac
       
-      # Estimate log(sigma)
-      res  <- .tuneLearnFast(form = form, data = data, qu = qu[oi], err = err, boot = boot, srange = srange, 
+      # Estimate log(sigma) using brent methods with current bracket (srange)
+      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err, srange = srange, 
+                             gausFit = gausFit, varHat = varHat,
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
                              control = ctrl, controlGam = controlGam)  
       
+      # Store loss function evaluations
       store[[oi]] <- cbind(store[[oi]], res[["store"]])
       lsig <- res$minimum
       
-      # If solution not too close to boundary store results and determine bracket for next iter
+      # If solution not too close to boundary store results and determine bracket for next iteration
       if( all(abs(lsig-srange) > aTol * abs(diff(srange))) ){ 
         
         sigs[oi] <- lsig
@@ -119,6 +156,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
         efacts[oi] <- ef
         errors[oi] <- res$err
         
+        # Determine what quantile needs to be dealt with next, then choose bracket and initialization using old results
         if(ii < nq)
         {
           kk <- oQu[ which.min(abs(qu[oQu[ii+1]] - qu[oQu[1:ii]])) ]
@@ -171,63 +209,103 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
 }
 
 ##########################################################################
-### Internal version, which works with scalar qu
+### Internal version, which works for a single quantile qu
 ########################################################################## 
-.tuneLearnFast <- function(form, data, boot, qu, err, srange, 
+.tuneLearnFast <- function(mObj, bObj, pMat, qu, err, srange,
+                           gausFit, varHat,
                            multicore, cluster, ncores, paropts, 
                            control, controlGam)
 {
-  n <- nrow(data)
-  nbo <- length(boot)
+  nbo <- length( bObj )
   
-  gausFit <- control$gausFit
-  
-  # Gaussian fit, used for initializations 
-  if( is.formula(form) ) {
-    fam <- "logF"
-    varHat <- gausFit$sig2
+  # Initialization of regression and smoothing coefficients for full data (not bootstrap) fit, using Gaussian fit 
+  if( is.formula(mObj$formula) ) { # Extended Gam OR ...
     initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
-  } else {
-    fam <- "logFlss"
-    varHat <- 1/gausFit$fit[ , 2]^2
+    
+  } else { # ... GAMLSS
     initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
-  # Create gam object for full data fits
-  mObj <- gam(form, family = get(fam)(qu = qu, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
-  
-  # Create an object for each bootstrap sample
-  bObj <- lapply(boot, function(bdat){
-    out <- gam(form, family = get(fam)(qu = qu, lam = NA, theta = NA), data = bdat, 
-               sp = gausFit$sp, control = controlGam, fit = FALSE)
-    return( out )
-  })
-  
-  # Objective function to be minimized
-  # GLOBALS: varHat 
-  objFun <- function(lsig, mObj, bObj, initM, initB, pMat)
+  # Loss function to be minimized using Brent method
+  objFun <- function(lsig, mObj, bObj, initM, initB, pMat, qu, varHat, cluster)
   {
+    nbo <- length( bObj )
     lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
+    
+    mObj$family$putQu( qu )
     mObj$family$putLam( lam )
     mObj$family$putTheta( lsig )
     
+    # Full data fit
     mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])
+    mMU <- as.matrix(mFit$fit)[ , 1]
+    mSP <- mFit$sp
     
-    initM <- list("start" = coef(mFit), "in.out" = list("sp" = mFit$sp, "scale" = 1))
+    initM <- list("start" = coef(mFit), "in.out" = list("sp" = mSP, "scale" = 1))
     
-    tmpDat <- as.data.frame( cbind(bObj, initB, pMat) )
-    names(tmpDat) <- c(".obj", ".init", ".pMat")
+    ## Function to be run in parallel (over boostrapped datasets)
+    # GLOBAL VARS: bObj, pMat, initB, mSP, mMU, lam, lsig, qu
+    .funToApply <- function(ind)
+    {
+      tmp <- lapply(ind, 
+                    function(kk){
+                      
+                      .obj <- bObj[[kk]]; .pMat <- pMat[[kk]]; .init <- initB[[kk]]; 
+                      
+                      .obj$lsp0 <- log( mSP )
+                      .obj$family$putQu( qu )
+                      .obj$family$putLam( lam )
+                      .obj$family$putTheta( lsig )
+                      
+                      fit <- gam(G = .obj, start = .init)
+                      
+                      .init <- betas <- coef(fit)
+                      Vp <- fit$Vp
+                      
+                      # In the gamlss case, we are interested only in the calibrating the location model
+                      # so we drop the coefficients related to the scale model
+                      lpi <- attr(.pMat, "lpi")
+                      if( !is.null(lpi) ){
+                        betas <- betas[lpi[[1]]]
+                        Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
+                      }
+                      
+                      # Calculating stardardized deviations from full data fit
+                      mu <- .pMat %*% betas
+                      sdev <- sqrt( diag( .pMat%*%Vp%*%t(.pMat) ) )
+                      .z <- (mu - mMU) / sdev
+                      
+                      return( list("z" = .z, "init" = .init) )
+                    })
+      
+      z <- as.vector(sapply(tmp, "[[", "z"))
+      init <- lapply(tmp, "[[", "init")
+      
+      return( list("z" = z, "init" = init) )
+    }
     
+    if( !is.null(cluster) ){
+      nc <- length(cluster)
+      environment(.funToApply) <- .GlobalEnv
+      clusterExport(cluster, c("initB", "mSP", "mMU", "lam", "lsig", "qu"), envir = environment())
+    } else {
+      nc <- 1
+    }
+    
+    # Divide work (boostrap datasets) between cluster workers
+    sched <- mapply(function(a, b) rep(a, each = b), 1:nc, 
+                    c(rep(floor(nbo / nc), nc - 1), floor(nbo / nc) + nbo %% nc), SIMPLIFY = FALSE ) 
+    sched <- split(1:nbo, do.call("c", sched))
+  
     # Loop over bootstrap datasets to get standardized deviations from full data fit
     withCallingHandlers({
-      out <- mlply(.data = tmpDat,
-                   .fun = .funToApplyTuneLearnFast,
+      out <- llply(.data = sched,
+                   .fun = .funToApply,
                    .parallel = multicore,
                    .inform = control[["verbose"]],
-                   .paropts = paropts,
+                   .paropts = paropts#,
                    ### ... arguments start here
-                   .mFit = mFit, .lam = lam, .lsig = lsig, .fData = data
       ) 
     }, warning = function(w) {
       # There is a bug in plyr concerning a useless warning about "..."
@@ -236,21 +314,20 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     })
     
     loss <- .adTest( as.vector(sapply(out, "[[", "z")) )
-    initB <- lapply(out, "[[", "init")
-    pMat <- lapply(out, "[[", "pMat")
-    
-    return( list("loss" = loss, "initM" = initM, "initB" = initB, "pMat" = pMat) )
-    
+    initB <- unlist(lapply(out, "[[", "init"), recursive=FALSE)
+
+    return( list("loss" = loss, "initM" = initM, "initB" = initB) )
   }
   
-  init <- list("initM" = initM, "initB" = vector("list", nbo), "pMat" = vector("list", nbo))
+  init <- list("initM" = initM, "initB" = vector("list", nbo))
   
-  # If we get convergence error, we increase "err" up to 0.2. I the error persists (or if the 
+  # If we get convergence error, we increase "err" up to 0.2. If the error persists (or if the 
   # error is of another nature) we throw an error
   repeat{
-    res <- tryCatch(.brent(brac=srange, f=objFun, mObj = mObj, bObj = bObj, init = init, t = control$tol), error = function(e) e)
-    #res <- tryCatch(.brent()optimize(obj, srange, tol = ctrl$tol), error = function(e) e)
-    
+    res <- tryCatch(.brent(brac=srange, f=objFun, mObj = mObj, bObj = bObj, init = init, 
+                           pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, t = control$tol), 
+                    error = function(e) e)
+
     if("error" %in% class(res)){
       if( grepl("can't correct step size", res) ) {
         if(err < 0.2){
@@ -270,47 +347,6 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
 }
 
 
-###########
-# Function that fits a single bootstrapped dataset (.obj) using a certain initialization (.init)
-# and prediction matrix (.pMat). It returns standardized deviations from full data fit. 
-# To be run in parallel (over boostrapped datasets) by .tuneLearnFast()
-###########
-.funToApplyTuneLearnFast <- function(.obj, .init, .pMat, .mFit, .lam, .lsig, .fData)
-{
-  # For some reason I have to do this
-  .obj <- .obj[[1]]; .init <- .init[[1]]; .pMat <- .pMat[[1]]
-  
-  .obj$lsp0 <- log( .mFit$sp )
-  .obj$family$putLam( .lam )
-  .obj$family$putTheta( .lsig )
-  
-  fit <- gam(G = .obj, start = .init)
-  
-  .init <- betas <- coef(fit)
-  Vp <- fit$Vp
-  
-  # Create prediction design matrix (only in first iteration)
-  if( is.null(.pMat) ) { 
-    .pMat <- predict.gam(fit, newdata = .fData, type = "lpmatrix") 
-    lpi <- attr(.pMat, "lpi")
-    if( !is.null(lpi) ){ 
-      .pMat <- .pMat[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
-      attr(.pMat, "lpi") <- lpi 
-    }
-  }
-  
-  # In the gamlss case, we are interested only in the calibrating the location model
-  lpi <- attr(.pMat, "lpi")
-  if( !is.null(lpi) ){
-    betas <- betas[lpi[[1]]]
-    Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
-  }
-  
-  mu <- .pMat %*% betas
-  sdev <- sqrt( diag( .pMat%*%Vp%*%t(.pMat) ) )
-  
-  .z <- (mu - as.matrix(.mFit$fit)[ , 1]) / sdev
-  
-  return( list("z" = .z, "init" = .init, "pMat" = .pMat) )
-}
+
+
 
