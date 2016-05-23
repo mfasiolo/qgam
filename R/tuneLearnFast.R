@@ -89,11 +89,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     out <- predict.gam(.obj, newdata = data, type = "lpmatrix")
     
     # Calibration uses the linear predictor for the quantile location, we discard the rest 
-    lpi <- attr(out, "lpi")
+    lpi <- attr(gausFit$formula, "lpi")
     if( !is.null(lpi) ){  
       out <- out[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
       attr(out, "lpi") <- lpi 
     }
+  
     return( out )
   })
   
