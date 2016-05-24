@@ -61,12 +61,12 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     mainObj$family$putTheta( lsig[ii] )
     
     withCallingHandlers({
-    fit <- gam(G = mainObj, in.out = initM[["in.out"]], start = initM[["start"]])}, warning = function(w) {
-      # There is a bug in plyr concerning a useless warning about "..."
+    fit <- gam(G = mainObj, in.out = initM[["in.out"]], start = initM[["start"]]) 
+    }, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
       {
-        message( paste("log(sigma) = ", round(lsig[ii], 6), " : outer Newton did not converge.", sep = "") )
+        message( paste("log(sigma) = ", round(lsig[ii], 6), " : outer Newton did not converge fully.", sep = "") )
         invokeRestart("muffleWarning")
       }
     })

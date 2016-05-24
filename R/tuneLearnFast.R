@@ -239,7 +239,16 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     mObj$family$putTheta( lsig )
     
     # Full data fit
-    mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])
+    withCallingHandlers({
+    mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])}, warning = function(w) {
+      if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
+          length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
+      {
+        message( paste("qu = ", qu, ", log(sigma) = ", round(lsig, 6), " : outer Newton did not converge fully.", sep = "") )
+        invokeRestart("muffleWarning")
+      }
+    })
+    
     mMU <- as.matrix(mFit$fit)[ , 1]
     mSP <- mFit$sp
     
