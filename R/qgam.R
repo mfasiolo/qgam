@@ -1,54 +1,106 @@
-#######
-### Fitting quantile gam model
-#######
-#' Fitting quantile gam model
+##########################
+#' Fit a smooth additive quantile regression model
 #' 
-#' @param \code{XXX} .
-#' @return XXX.
+#' @description This function fits a smooth additive regression model for a single quantile.
+#' 
+#' @param form A GAM formula, or a list of formulae. See ?mgcv::gam details.
+#' @param data A data frame or list containing the model response variable and covariates required by the formula.
+#'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
+#' @param qu The quantile of interest. Should be in (0, 1).
+#' @param lsig The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
+#'             parameter is estimated by posterior calibration described in XXX. Obviously, the function is much faster
+#'             if the user provides a value. 
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.
+#' @param multicore If TRUE the calibration will happen in parallel.
+#' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
+#' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
+#'                which will be used if \code{multicore == TRUE}. The user has to remember to stop the cluster.
+#' @param paropts a list of additional options passed into the foreach function when parallel computation is enabled. 
+#'                This is important if (for example) your code relies on external data or packages: 
+#'                use the .export and .packages arguments to supply them so that all cluster nodes 
+#'                have the correct environment set up for computing. 
+#' @param control A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
+#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
+#'                   See the \code{control} argument in \code{?mgcv::gam}.
+#' @return A \code{gamObject}. See \code{?gamObject}.
+#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @examples
+#
+#' #####
+#' # Univariate "car" example
+#' ####
+#' library(qgam); library(MASS)
+#' 
+#' # Fit for quantile 0.8 using the best sigma
+#' set.seed(6436)
+#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = 0.8)
+#' 
+#' # Plot the fit
+#' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
+#' pred <- predict(fit, newdata = xSeq, se=TRUE)
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+#' lines(xSeq$times, pred$fit, lwd = 1)
+#' lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+#' lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)   
+#' 
+#' # The variance is clearly not constant, so it makes sense to consider a gamlss quantile regression model.
+#' # Notice that here we re-use previously calibrated log-sigma and we increase err, to speed up computation.
+#' set.seed(6436)
+#' fit2 <- qgam(list(accel~s(times, k=20, bs="ad"), ~ s(times)), data = mcycle, err = 0.05, qu = 0.8, 
+#'              lsig = fit$family$getTheta()) # <- re-use previously calibrated log-sigma
+#' 
+#' # Plot the fit
+#' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
+#' pred <- predict(fit2, newdata = xSeq, se=TRUE)
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+#' lines(xSeq$times, pred$fit[ , 1], lwd = 1)
+#' lines(xSeq$times, pred$fit[ , 1] + 2*pred$se.fit[ , 1], lwd = 1, col = 2)
+#' lines(xSeq$times, pred$fit[ , 1] - 2*pred$se.fit[ , 1], lwd = 1, col = 2)
+#' 
+#' #####
+#' # Multivariate Gaussian example
+#' ####
+#' library(qgam)
+#' set.seed(2)
+#' dat <- gamSim(1,n=400,dist="normal",scale=2)
+#' b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3),data=dat)
+#' 
+#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.01, qu = 0.8)
+#' plot(fit)                          
+#' @export qgam  
 #'
-#' @details XXX
-#'         
-#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>.   
-#' @references Fasiolo and Wood XXX.           
-#' @export
-#' 
-
-qgam <- function(form, data, qu, lsigma = NULL, err = 0.01, ncores = 1, control = list(), controlGam = list())
+qgam <- function(form, data, qu, lsig = NULL, err = 0.01, 
+                 multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
+                 control = list(), controlGam = list())
 {
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
   
-  # Initial Gaussian fit
-  if( is.null(control[["gausFit"]]) )
-  {
-    if( is.formula(form) ){
-      gausFit <- gam(form, data = data)
-    } else {
-      gausFit <- gam(form, data = data, family = gaulss(b=0))
-    }
-    control[["gausFit"]] <- gausFit
-  }
-
+  # Setting up control parameter (mostly used by tuneLearnFast)
+  ctrl <- list( "gausFit" = NULL, "verbose" = FALSE, "b" = 0)
+  
+  # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
+  ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
+  
+  # Gaussian fit, used for initializations 
+  if( is.formula(form) ) {
+    fam <- "logF"
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- gam(form, data = data, control = controlGam) }
+    varHat <- ctrl$gausFit$sig2
+  } else {
+    fam <- "logFlss"
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam) }
+    varHat <- 1/ctrl$gausFit$fit[ , 2]^2
+  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
+  
   # Selecting the learning rate sigma
-  if( is.null(lsigma) ) {  
-    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu,
-                           ncores = ncores, control = control, controlGam = controlGam)
-    lsigma <- learn$lsigma
+  if( is.null(lsig) ) {  
+    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = ctrl, controlGam = controlGam)
+    lsig <- learn$lsig
   }
   
   # Fit model
-  if( is.formula(form) ){ # Extended Gam OR .....
-    
-    lam <- err * sqrt(2*pi*control[["gausFit"]]$sig2) / (2*log(2)*exp(lsigma))
-    
-    fit <- gam(form, family = logF(qu = qu, lam = lam, theta = lsigma), data = data, control = controlGam)
-    
-  } else { # .... Gamlss
-    
-    lam <- err * sqrt(2*pi/(control[["gausFit"]]$fit[ , 2]^2)) / (2*log(2)*exp(lsigma))
-    
-    fit <- gam(form, family = logFlss(qu = qu, lam = lam, offset = lsigma), data = data, control = controlGam)
-    
-  }
+  lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
+  fit <- gam(form, family = get(fam)(qu = qu, lam = lam, theta = lsig), data = data, control = controlGam)
   
   return( fit )
 }

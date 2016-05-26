@@ -41,10 +41,12 @@
 
 logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TRUE) 
 { 
-  
+  # Some checks
   if( !remInter ){
     if( theta != 0 ){ stop("remInter == FALSE, but theta != 0") }
     theta <- 0 }
+  
+  if( !is.na(qu) && (findInterval(qu, c(0, 1) )!=1) ) stop("qu should be in (0, 1)")
   
   ## Extended family object for modified log-F, to allow direct estimation of theta
   ## as part of REML optimization. Currently the template for extended family objects.

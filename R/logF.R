@@ -44,6 +44,9 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   ## as part of REML optimization. Currently the template for extended family objects.
   ## length(theta)=1; log theta supplied. 
   ## Written by Matteo Fasiolo.
+  # Some checks
+  if( !is.na(qu) && (findInterval(qu, c(0, 1) )!=1) ) stop("qu should be in (0, 1)")
+  
   linktemp <- substitute(link)
   if (!is.character(linktemp)) linktemp <- deparse(linktemp)
   if (linktemp %in% c("log", "identity", "sqrt")) stats <- make.link(linktemp)

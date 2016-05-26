@@ -1,19 +1,94 @@
-#######
-### Tune learning rate for quantile regression
-#######
-#' Learning rate tuning by calibration.
+##########################
+#' Fast learning rate calibration for the Gibbs posterior
 #' 
-#' @param form a \code{gam} model formula.
-#' @return output of \code{optimize}.
+#' @description The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
+#'              based on boostrapping. Here the loss function is minimized, for each quantile, using a Brent search.
+#' 
+#' @param form A GAM formula, or a list of formulae. See ?mgcv::gam details.
+#' @param data A data frame or list containing the model response variable and covariates required by the formula.
+#'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
+#' @param qu The quantile of interest. Should be in (0, 1).
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.
+#' @param multicore If TRUE the calibration will happen in parallel.
+#' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
+#' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
+#'                which will be used if \code{multicore == TRUE}. The user has to remember to stop the cluster.
+#' @param paropts a list of additional options passed into the foreach function when parallel computation is enabled. 
+#'                This is important if (for example) your code relies on external data or packages: 
+#'                use the .export and .packages arguments to supply them so that all cluster nodes 
+#'                have the correct environment set up for computing. 
+#' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
+#'                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
+#'                                       By default \code{init=NULL} and the optimization is initialized by other means.}
+#'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
+#'                                       search range is \code{(init - 0.5, init + 2)}.}
+#'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
+#'                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
+#'                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
+#'                                      See \code{?optimize} for details.}
+#'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
+#' }
+#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
+#'                   See the \code{control} argument in \code{?mgcv::gam}.
+#' @return A list with entries: \itemize{
+#'                   \item{\code{lsig} = a vector containing the values of log(sigma) that minimize the loss function, 
+#'                                       for each quantile.}
+#'                   \item{\code{err} = the error bound used for each quantile. Generally each entry is identical to the
+#'                                      argument \code{err}, but in some cases the function increases it to enhance stabily.}
+#'                   \item{\code{ranges} = the search ranges by the Brent algorithm to find log-sigma, for each quantile. }
+#'                   \item{\code{store} = a list, where the i-th entry is a matrix containing all the locations (1st row) at which
+#'                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
+#' }
+#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @examples
+#' library(qgam); library(MASS)
+#' 
+#' ###
+#' # Single quantile fit
+#' ###
+#' # Calibrate learning rate on a grid
+#' set.seed(5235)
+#' tun <- tuneLearnFast(form = accel~s(times,k=20,bs="ad"), 
+#'                      data = mcycle, 
+#'                      err = 0.01, 
+#'                      qu = 0.2)
+#' 
+#' # Fit for quantile 0.2 using the best sigma
+#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2,
+#'             err = 0.01, lsig = tun$lsig)
+#' 
+#' pred <- predict(fit, se=TRUE)
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
+#'      ylim = c(-150, 80))
+#' lines(mcycle$times, pred$fit, lwd = 1)
+#' lines(mcycle$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+#' lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2) 
+#' 
+#' ###
+#' # Multiple quantile fits
+#' ###
+#' # Calibrate learning rate on a grid
+#' quSeq <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+#' set.seed(5235)
+#' tun <- tuneLearnFast(form = accel~s(times, k=20, bs="ad"), 
+#'                      data = mcycle, 
+#'                      err = 0.01, 
+#'                      qu = quSeq)
+#' 
+#' # Fit using estimated sigmas
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq,
+#'              err = 0.01, lsig = tun$lsig)
+#' 
+#' # Plot fitted quantiles
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
+#'      ylim = c(-150, 80))
+#' for(iq in quSeq){
+#'   pred <- qdo(fit, iq, predict)
+#'   lines(mcycle$times, pred, col = 2)
+#' }                   
+#' @export tuneLearnFast
 #'
-#' @details XXX
-#'         
-#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>.   
-#' @references Fasiolo and Wood XXX.           
-#' @export
-#' 
-
-tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL, 
+tuneLearnFast <- function(form, data, qu, err = 0.01,
                           multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                           control = list(), controlGam = list())
 { 
@@ -22,10 +97,11 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   
   # Setting up control parameter
   ctrl <- list( "init" = NULL,
-                "brac" = log( c(1/5, 5) ), 
-                "K" = 20,
+                "brac" = log( c(1/2, 2) ), 
+                "K" = 50,
                 "tol" = .Machine$double.eps^0.25,
                 "b" = 0,
+                "gausFit" = NULL,
                 "verbose" = FALSE )
   
   # Checking if the control list contains unknown names
@@ -38,20 +114,18 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   # Sanity check
   if( tol > 0.1 * abs(diff(brac)) ) stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
   
-  # (Optional) create K boostrap dataset
-  if( is.null(boot) ){
-    tmp <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
-    boot <- lapply(tmp, function(ff) data[ff, ] )
-  }
+  # Create K boostrap dataset
+  tmp <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  boot <- lapply(tmp, function(ff) data[ff, ] )
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
     fam <- "logF"
-    gausFit <- gam(form, data = data, control = controlGam)
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- gam(form, data = data, control = controlGam) } else { gausFit <- ctrl$gausFit }
     varHat <- gausFit$sig2
   } else {
     fam <- "logFlss"
-    gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam)
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam) } else { gausFit <- ctrl$gausFit }
     varHat <- 1/gausFit$fit[ , 2]^2
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
@@ -64,9 +138,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
     if( !is.list(formula) ){
-      isig <- log(sqrt( 5 * gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     } else {
-      isig <- log(sqrt( 5 * (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     }
   } else {
     isig <- ctrl[["init"]]
@@ -94,7 +168,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
       out <- out[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
       attr(out, "lpi") <- lpi 
     }
-  
+    
     return( out )
   })
   
@@ -117,7 +191,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     clusterExport(cluster, tmp, envir = environment())
     paropts[[".export"]] <- NULL
   }
-
+  
   # Estimated learning rates, num of bracket expansions, error rates and bracket ranges used in bisection
   sigs <- efacts <- errors <- numeric(nq)
   rans <- matrix(NA, nq, 2)
@@ -201,7 +275,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
   
   names(sigs) <- qu
   
-  out <- list("lsigma" = sigs, "err" = errors, "ranges" = rans, "store" = store)
+  out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store)
   
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)
@@ -240,14 +314,14 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     
     # Full data fit
     withCallingHandlers({
-    mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])}, warning = function(w) {
-      if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
-          length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
-      {
-        message( paste("qu = ", qu, ", log(sigma) = ", round(lsig, 6), " : outer Newton did not converge fully.", sep = "") )
-        invokeRestart("muffleWarning")
-      }
-    })
+      mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])}, warning = function(w) {
+        if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
+            length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
+        {
+          message( paste("qu = ", qu, ", log(sigma) = ", round(lsig, 6), " : outer Newton did not converge fully.", sep = "") )
+          invokeRestart("muffleWarning")
+        }
+      })
     
     mMU <- as.matrix(mFit$fit)[ , 1]
     mSP <- mFit$sp
@@ -307,7 +381,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     sched <- mapply(function(a, b) rep(a, each = b), 1:nc, 
                     c(rep(floor(nbo / nc), nc - 1), floor(nbo / nc) + nbo %% nc), SIMPLIFY = FALSE ) 
     sched <- split(1:nbo, do.call("c", sched))
-  
+    
     # Loop over bootstrap datasets to get standardized deviations from full data fit
     withCallingHandlers({
       out <- llply(.data = sched,
@@ -325,7 +399,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     
     loss <- .adTest( as.vector(sapply(out, "[[", "z")) )
     initB <- unlist(lapply(out, "[[", "init"), recursive=FALSE)
-
+    
     return( list("loss" = loss, "initM" = initM, "initB" = initB) )
   }
   
@@ -337,7 +411,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01, boot = NULL,
     res <- tryCatch(.brent(brac=srange, f=objFun, mObj = mObj, bObj = bObj, init = init, 
                            pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, t = control$tol), 
                     error = function(e) e)
-
+    
     if("error" %in% class(res)){
       if( grepl("can't correct step size", res) ) {
         if(err < 0.2){
