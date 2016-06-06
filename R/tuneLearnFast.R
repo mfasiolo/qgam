@@ -22,6 +22,9 @@
 #'                                       By default \code{init=NULL} and the optimization is initialized by other means.}
 #'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
 #'                                       search range is \code{(init - 0.5, init + 2)}.}
+#'                   \item{\code{redWd} = parameter which determines when the bracket size needs to be reduced.
+#'                                        If \code{redWd==10} then the bracket is halved if the nearest solution
+#'                                        falls within the central 10\% of its width. By default \code{redWd = 10}.}
 #'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
 #'                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
 #'                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
@@ -99,6 +102,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   ctrl <- list( "init" = NULL,
                 "brac" = log( c(1/2, 2) ), 
                 "K" = 50,
+                "redWd" = 10,
                 "tol" = .Machine$double.eps^0.25,
                 "b" = 0,
                 "gausFit" = NULL,
@@ -127,7 +131,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
     fam <- "logFlss"
     if( is.null(ctrl[["gausFit"]]) ) { gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam) } else { gausFit <- ctrl$gausFit }
     varHat <- 1/gausFit$fit[ , 2]^2
-  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
+  }
   
   # Order quantiles so that those close to the median are dealt with first
   oQu <- order( abs(qu-0.5) )
@@ -240,8 +244,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
           brac <- c(-1, 1) * wd / 2
           
           # If kk solution close to center of kk bracket, halve the bracket size 
-          # (unless the size of the bracket is < 10*tol)
-          if( (abs(isig - mean(rans[kk, ])) < 0.25*wd) && (wd > 10*tol) ) brac <- brac / 2
+          # (unless the size of the bracket is < 10*tol or the bracket has been expanded in the old iteration)
+          if( (abs(isig - mean(rans[kk, ])) < wd/ctrl$redWd) && (wd > 10*tol) && (efacts[kk] == 1)) brac <- brac / 2
         }
         
         break
@@ -266,8 +270,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
       points(qu[tseq], tmp[ , 1], pch = 3)
       points(qu[tseq], tmp[ , 2], pch = 3)
       points(qu[tseq], rowMeans(tmp), pch = 3)
-      for(zz in 1:ii) segments(qu[oQu[zz]], rowMeans(rans)[oQu[zz]] - abs(diff(tmp[zz, ]))/4, 
-                               qu[oQu[zz]], rowMeans(rans)[oQu[zz]] + abs(diff(tmp[zz, ]))/4, col = 1)
+      for(zz in 1:ii) segments(qu[oQu[zz]], rowMeans(rans)[oQu[zz]] - abs(diff(tmp[zz, ]))/ctrl$redWd, 
+                               qu[oQu[zz]], rowMeans(rans)[oQu[zz]] + abs(diff(tmp[zz, ]))/ctrl$redWd, col = 1)
       plot(qu, efacts, xlab = "qu", "ylab" = "Bracket expansions")  
       plot(qu, errors)
     }
@@ -397,7 +401,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
         invokeRestart("muffleWarning")
     })
     
-    loss <- .adTest( as.vector(sapply(out, "[[", "z")) )
+    loss <- .adTest( do.call("c", lapply(out, "[[", "z")) )
     initB <- unlist(lapply(out, "[[", "init"), recursive=FALSE)
     
     return( list("loss" = loss, "initM" = initM, "initB" = initB) )

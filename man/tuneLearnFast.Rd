@@ -35,6 +35,9 @@ have the correct environment set up for computing.}
                                       By default \code{init=NULL} and the optimization is initialized by other means.}
                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
                                       search range is \code{(init - 0.5, init + 2)}.}
+                  \item{\code{redWd} = parameter which determines when bracket size needs to be reduced.
+                                       If \code{redWd==10} then the bracket is halved if the nearest solution
+                                       falls withing the central 10\% of its bracket. By default \code{redWd = 10}.}
                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.

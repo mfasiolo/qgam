@@ -6,7 +6,7 @@
 \usage{
 qgam(form, data, qu, lsig = NULL, err = 0.01,
   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
-  1, paropts = list(), control = list(), controlGam = list())
+  1, paropts = list(), control = list(), controlGam = list(), ...)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}

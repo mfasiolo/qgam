@@ -28,7 +28,7 @@
 #'                                      See \code{?gamObject}. }
 #'                   \item{\code{model} = the \code{model} slot of the \code{gamObject}s in the \code{fit} slot. This is the same for every
 #'                                        fit, hence only one copy is stored.}
-#'                   \item{\code{smooth} = the \codel{smooth} slot of the \code{gamObject}s in the \code{fit} slot. This is the same for every
+#'                   \item{\code{smooth} = the \code{smooth} slot of the \code{gamObject}s in the \code{fit} slot. This is the same for every
 #'                                        fit, hence only one copy is stored.}
 #'                   \item{\code{calibr} = a list which is the output of an internal call to \code{tuneLearnFast}, which is used for calibrating
 #'                                         the learning rate. See \code{?tuneLearnFast} for details.}
