@@ -14,7 +14,7 @@ qdo(obj, qu, fun, ...)
 \item{fun}{The method or function that we want to use on the \code{gamObject} corresponding to quantile \code{qu}. For instance
 \code{predict}, \code{plot} or \code{summary}.}
 
-\item{...}{Addinal arguments to be passed to \code{fun}.}
+\item{...}{Additional arguments to be passed to \code{fun}.}
 }
 \value{
 The output of \code{fun}, whatever that is.
@@ -29,7 +29,7 @@ library(qgam); library(MASS)
 
 quSeq <- c(0.4, 0.6)
 set.seed(737)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = quSeq, 
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
 
 qdo(fit, 0.4, summary)

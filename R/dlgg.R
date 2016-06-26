@@ -1,5 +1,5 @@
 # Computes log-F density and its derivatives
-dlgg <- function(y, mu, tau, phi, log = FALSE, deriv = 0)
+.dlgg <- function(y, mu, tau, phi, log = FALSE, deriv = 0)
 {
   k <- exp( 2*phi )
   rk <- sqrt( k )

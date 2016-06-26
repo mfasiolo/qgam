@@ -1,5 +1,5 @@
 # Sigmoid function and its derivatives
-sigmoid <- function(y, deriv = FALSE)
+.sigmoid <- function(y, deriv = FALSE)
 {
   l0 <- plogis(y, 0, 1)
   

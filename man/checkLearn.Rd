@@ -25,7 +25,7 @@ library(qgam); library(MASS)
 
 quSeq <- c(0.4, 0.5, 0.6)
 set.seed(737)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = quSeq, 
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
 
 checkLearn(fit$calibr)

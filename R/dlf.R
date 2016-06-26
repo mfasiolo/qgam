@@ -3,7 +3,7 @@ dlf <- function(x, tau, mu, sig, lam, log = FALSE, deriv = 0)
 {
   y <- (x - mu) / sig
   
-  out <- tau * y - lam * log1pexp( y / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) 
+  out <- tau * y - lam * .log1pexp( y / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) 
   
   if( !log ) out <- exp(out)
   
@@ -29,7 +29,7 @@ dlf <- function(x, tau, mu, sig, lam, log = FALSE, deriv = 0)
       if(deriv > 2)
       {
         z <- y / lam
-        der <- sigmoid(z, deriv = TRUE)
+        der <- .sigmoid(z, deriv = TRUE)
         
         out$D3m <- sum( der$D2 / (lam^2 * sig^3) )
         out$D4m <- sum( - der$D3 / (lam^3 * sig^4) )

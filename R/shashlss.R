@@ -39,7 +39,7 @@
 ## Sinh-cosh density
 #######################
 
-shashlss <- function (link = list("identity", "identity", "identity", "identity")) 
+.shashlss <- function (link = list("identity", "identity", "identity", "identity")) 
 { 
   ## Extended family object for modified log-F, to allow direct estimation of theta
   ## as part of REML optimization. Currently the template for extended family objects.
@@ -106,7 +106,7 @@ shashlss <- function (link = list("identity", "identity", "identity", "identity"
     rsd
   } ## residuals
   
-  ll <- function(y, X, coef, wt, family, deriv=0, d1b=0, d2b=0, Hp=NULL, rank=0, fh=NULL, D=NULL) {
+  ll <- function(y, X, coef, wt, family, offset = NULL, deriv=0, d1b=0, d2b=0, Hp=NULL, rank=0, fh=NULL, D=NULL) {
     ## function defining the shash model log lik. 
     ## deriv: 0 - eval
     ##        1 - grad and Hess
@@ -114,6 +114,8 @@ shashlss <- function (link = list("identity", "identity", "identity", "identity"
     ##        3 - first deriv of Hess
     ##        4 - everything.
     npar <- 4
+    
+    if(!is.null(offset)) stop("offset not still available for this family")
     
     jj <- attr(X,"lpi") ## extract linear predictor index
     

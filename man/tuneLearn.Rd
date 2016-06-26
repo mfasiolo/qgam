@@ -18,7 +18,7 @@ By default the variables are taken from environment(formula): typically the envi
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -59,7 +59,7 @@ set.seed(41444)
 sigSeq <- seq(1.5, 5, length.out = 10)
 closs <- tuneLearn(form = accel~s(times,k=20,bs="ad"), 
                    data = mcycle, 
-                   err = 0.01, 
+                   err = 0.05, 
                    lsig = sigSeq, 
                    qu = 0.5)
 
@@ -70,7 +70,7 @@ best <- sigSeq[ which.min(closs) ]
 abline(v = best, lty = 2)
 
 # Fit using the best sigma
-fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.01, lsig = best)
+fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.05, lsig = best)
 summary(fit)
 
 pred <- predict(fit, se=TRUE)
@@ -82,5 +82,9 @@ lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+            \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 }
 

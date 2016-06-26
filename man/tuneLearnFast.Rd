@@ -16,7 +16,7 @@ By default the variables are taken from environment(formula): typically the envi
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -35,9 +35,9 @@ have the correct environment set up for computing.}
                                       By default \code{init=NULL} and the optimization is initialized by other means.}
                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
                                       search range is \code{(init - 0.5, init + 2)}.}
-                  \item{\code{redWd} = parameter which determines when bracket size needs to be reduced.
+                  \item{\code{redWd} = parameter which determines when the bracket size needs to be reduced.
                                        If \code{redWd==10} then the bracket is halved if the nearest solution
-                                       falls withing the central 10\% of its bracket. By default \code{redWd = 10}.}
+                                       falls within the central 10\% of its width. By default \code{redWd = 10}.}
                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
@@ -73,12 +73,12 @@ library(qgam); library(MASS)
 set.seed(5235)
 tun <- tuneLearnFast(form = accel~s(times,k=20,bs="ad"), 
                      data = mcycle, 
-                     err = 0.01, 
+                     err = 0.05, 
                      qu = 0.2)
 
 # Fit for quantile 0.2 using the best sigma
 fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2,
-            err = 0.01, lsig = tun$lsig)
+            err = 0.05, lsig = tun$lsig)
 
 pred <- predict(fit, se=TRUE)
 plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -91,16 +91,16 @@ lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)
 # Multiple quantile fits
 ###
 # Calibrate learning rate on a grid
-quSeq <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+quSeq <- c(0.25, 0.5, 0.75)
 set.seed(5235)
 tun <- tuneLearnFast(form = accel~s(times, k=20, bs="ad"), 
                      data = mcycle, 
-                     err = 0.01, 
+                     err = 0.05, 
                      qu = quSeq)
 
 # Fit using estimated sigmas
 fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq,
-             err = 0.01, lsig = tun$lsig)
+             err = 0.05, lsig = tun$lsig)
 
 # Plot fitted quantiles
 plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -112,5 +112,9 @@ for(iq in quSeq){
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+            \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 }
 

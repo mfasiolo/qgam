@@ -8,7 +8,7 @@
 
 
 
-modInstant <- function(data0, data1, eq, model = "gam", distribution = "gaussian", 
+.modInstant <- function(data0, data1, eq, model = "gam", distribution = "gaussian", 
                        nodesize = 100) {
   
   firstInstant <- data1$Instant[1]
@@ -64,7 +64,7 @@ modInstant <- function(data0, data1, eq, model = "gam", distribution = "gaussian
 
 ### prevision des modèles par instant
 
-predictModInstant <- function(g, data1, model = "gam") {
+.predictModInstant <- function(g, data1, model = "gam") {
   
   mod <- g$model
   forecast <- numeric(nrow(data1))
@@ -94,7 +94,7 @@ predictModInstant <- function(g, data1, model = "gam") {
 ## ************************************************* RQ par Instant
 ## *************************************************
 
-rqInstant <- function(eq, data0, data1, probs) {
+.rqInstant <- function(eq, data0, data1, probs) {
   forecast_q <- matrix(0, nrow = nrow(data1), ncol = length(probs))
   fitted_q <- matrix(0, nrow = nrow(data0), ncol = length(probs))
   mod <- list()
@@ -118,7 +118,7 @@ rqInstant <- function(eq, data0, data1, probs) {
 
 ## Gam quantile de base eq : equation des effets sur la moyenne eq.var : equation
 ## des effets sur la variance
-gam_quant2 <- function(eq, data0, data1, probs, estim = TRUE, eq.var = NULL) {
+.gam_quant2 <- function(eq, data0, data1, probs, estim = TRUE, eq.var = NULL) {
   
   # Définition des objets
   y0 <- as.character(terms(as.formula(eq))[[2]])  # variable à prévoir
@@ -172,7 +172,7 @@ gam_quant2 <- function(eq, data0, data1, probs, estim = TRUE, eq.var = NULL) {
 }
 
 ## Fonction prévision de gam quantile
-predict.gam_quant2 <- function(mod, newdata, quantile = "all") {
+.predict.gam_quant2 <- function(mod, newdata, quantile = "all") {
   nprobs <- ifelse(quantile == "all", 99, length(quantile))
   y0 <- as.character(terms(as.formula(mod[[1]]$eq))[[2]])
   q <- matrix(0, ncol = nprobs, nrow = nrow(newdata))
@@ -201,7 +201,7 @@ predict.gam_quant2 <- function(mod, newdata, quantile = "all") {
 ## Fonction de prévision de gam quantile utilisée pour la création de scénarios
 ## météo Comprendre la différence avec predict.gam_quant2 !!!
 
-predict.gam_quant <- function(mod, newdata, quantile = "all") {
+.predict.gam_quant <- function(mod, newdata, quantile = "all") {
   y0 <- as.character(terms(as.formula(mod$eq))[[2]])
   data1_q <- data.frame(y = newdata[, y0], predict(mod$gam, newdata, type = "terms"))
   
@@ -223,7 +223,7 @@ predict.gam_quant <- function(mod, newdata, quantile = "all") {
 
 
 ## Gam quantile horaires (h = 0,...,23)
-gam_quant_instant <- function(eq, data0, data1, probs, eq.var = NULL) {
+.gam_quant_instant <- function(eq, data0, data1, probs, eq.var = NULL) {
   forecast <- numeric(nrow(data1))
   fitted <- numeric(nrow(data0))
   forecast_q <- matrix(0, nrow = nrow(data1), ncol = length(probs))
@@ -246,7 +246,7 @@ gam_quant_instant <- function(eq, data0, data1, probs, eq.var = NULL) {
 }
 
 ## Version parallèle de gam_quant_instant
-gam_quant_instant.parallel <- function(eq, data0, data1, probs, eq.var = NULL) {
+.gam_quant_instant.parallel <- function(eq, data0, data1, probs, eq.var = NULL) {
   forecast <- numeric(nrow(data1))  # résultats de prévision de la moyenne
   fitted <- numeric(nrow(data0))  # résultats d'estimation de la moyenne
   forecast_q <- matrix(0, nrow = nrow(data1), ncol = length(probs))  # résultats de prévision des quantiles (probs = 0.01,...)
@@ -289,7 +289,7 @@ gam_quant_instant.parallel <- function(eq, data0, data1, probs, eq.var = NULL) {
 ## *****************************************************
 
 
-glm_quant <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold = 10, 
+.glm_quant <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold = 10, 
                       h) {
   Y.quant <- Y - Y.fit
   forecast_q <- matrix(0, ncol = length(prob), nrow = nrow(Xnew))
@@ -306,7 +306,7 @@ glm_quant <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold = 10
 }
 
 
-glm_quant.par <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold = 10, 
+.glm_quant.par <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold = 10, 
                           h) {
   Y.quant <- Y - Y.fit
   forecast_q <- foreach(i = c(1:length(prob)), .combine = cbind) %dopar% {
@@ -327,7 +327,7 @@ glm_quant.par <- function(prob, X, Y, Y.fit, Y.forecast, Xnew, alpha = 1, nfold 
 ## ******************************************************
 
 ## Une version parallèle optimisée de Gam par instant
-gamH.parallel <- function(Data0, Data1, eq) {
+.gamH.parallel <- function(Data0, Data1, eq) {
   forecast <- array(0, dim = nrow(Data1))
   fitted <- array(0, dim = nrow(Data0))
   mod <- list()
@@ -358,7 +358,7 @@ gamH.parallel <- function(Data0, Data1, eq) {
 
 
 ## une version horaire de quantregForest
-quantregForest_instant <- function(y, x0, x1, instant0, instant1, probs, ntree = 200, 
+.quantregForest_instant <- function(y, x0, x1, instant0, instant1, probs, ntree = 200, 
                                    nodesize = nodesize) {
   forecast <- numeric(nrow(x1))
   fitted <- numeric(nrow(x0))

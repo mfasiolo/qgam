@@ -99,7 +99,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     
     z <- (y - mu) / sig
     
-    term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
+    term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*.log1pexp( z / lam )
     
     2 * wt * term
   }
@@ -123,10 +123,10 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     ## Dmu is deriv w.r.t. mu once, etc...
     r$Dmu <- - 2 * wt * ( (pl - tau) / sig )
     r$Dmu2 <- 2 * wt * ( dl / sig )
-    r$EDmu2 <- 2 * wt * ( (lam*tau*(1-tau)) / ((lam*tau + lam*(1-tau))^2 + tau*lam + lam*(1-tau)) / sig^2) ## exact (or estimated) expected weight #### XXX ####
+    r$EDmu2 <- 2 * wt * (tau*(1-tau) / (lam + 1)) / sig^2 ## exact (or estimated) expected weight #### XXX ####
     if (level>0) { ## quantities needed for first derivatives
       zl <- z / lam
-      der <- sigmoid(zl, deriv = TRUE)
+      der <- .sigmoid(zl, deriv = TRUE)
       
       r$Dth <- - 2 * wt * sig * ( z * (pl - tau) / sig ) 
       #r$Dmuth <- 2 * wt * sig * ( ((y-mu)*dl + pl - tau) / sig^2 )
@@ -165,7 +165,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     
     z <- (y - mu) / sig
     
-    term <- - tau * z + lam * log1pexp( z / lam ) + log( sig * lam * beta(lam*tau, (1-tau)*lam) )
+    term <- - tau * z + lam * .log1pexp( z / lam ) + log( sig * lam * beta(lam*tau, (1-tau)*lam) )
     
     2 * sum(term * wt)
   }
@@ -176,7 +176,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     ## the log saturated likelihood function.
     sig <- exp(theta)
     
-    ls <- sum( w * (tau*lam*log(tau) + lam*(1-tau) *log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))) )
+    ls <- sum( w * (tau*lam*log(tau) + lam*(1-tau) * log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))) )
     
     #lsth <- - sig * sum(w / sig)
     lsth <- - sum(w)

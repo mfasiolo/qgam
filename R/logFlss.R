@@ -112,7 +112,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
       dl <- dlogis(z-mu, 0, lam*sig)
       pl <- plogis(z-mu, 0, lam*sig)
       
-      l <- tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) )
+      l <- tau * z - lam * .log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) )
       
       ls <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))
       
@@ -123,7 +123,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     rsd
   } ## residuals
   
-  ll <- function(y, X, coef, wt, family, deriv=0, d1b=0, d2b=0, Hp=NULL, rank=0, fh=NULL, D=NULL) {
+  ll <- function(y, X, coef, wt, family, offset = NULL, deriv=0, d1b=0, d2b=0, Hp=NULL, rank=0, fh=NULL, D=NULL) {
     ## function defining the gamlss Gaussian model log lik. 
     ## N(mu,sigma^2) parameterized in terms of mu and log(sigma)
     ## deriv: 0 - eval
@@ -134,6 +134,8 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     tau <- 1 - get(".qu")
     theta <- get(".theta")
     lam <- get(".lam")
+    
+    if(!is.null(offset)) stop("offset not still available for this family")
     
     jj <- attr(X,"lpi") ## extract linear predictor index
     eta <- X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]
@@ -149,7 +151,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     dl <- dlogis(z-mu, 0, lam*sig)
     pl <- plogis(z-mu, 0, lam*sig)
     
-    l <- sum( tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) )
+    l <- sum( tau * z - lam * .log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) )
     
     if (deriv>0) {
       
@@ -178,7 +180,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     if (deriv>1) {
       
       zl <- z / lam
-      der <- sigmoid(zl, deriv = TRUE)
+      der <- .sigmoid(zl, deriv = TRUE)
       
       ## the third derivatives
       ## order mmm,mms,mss,sss

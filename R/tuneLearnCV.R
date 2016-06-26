@@ -1,6 +1,6 @@
 ####### Tuning the learning rate for Gibbs posterior
 
-tuneLearnCV <- function(form, data, nrep, sig, qu, lamba = 0.1, ncores = 1, K = 10)
+.tuneLearnCV <- function(form, data, nrep, sig, qu, lamba = 0.1, ncores = 1, K = 10)
 { 
   n <- nrow(data)
   

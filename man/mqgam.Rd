@@ -17,10 +17,10 @@ By default the variables are taken from environment(formula): typically the envi
 \item{qu}{A vectors of quantiles of interest. Each entry should be in (0, 1).}
 
 \item{lsig}{The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-parameter is estimated by posterior calibration described in XXX. Obviously, the function is much faster
+parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
 if the user provides a value.}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -59,12 +59,12 @@ This function fits a smooth additive regression model to several quantiles.
 #####
 # Univariate "car" example
 ####
-#'library(qgam); library(MASS)
+library(qgam); library(MASS)
 
 # Fit for quantile 0.8 using the best sigma
 quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = quSeq, 
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
 
 # Plot the fit
@@ -83,12 +83,16 @@ set.seed(2)
 dat <- gamSim(1, n=400, dist="normal", scale=2)
 b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat)
 
-fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.01, qu = c(0.2, 0.8), 
+fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration
 
-invisible( qdo(fit, 0.2, plot) )
+invisible( qdo(fit, 0.2, plot, pages = 1) )
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+            \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 }
 

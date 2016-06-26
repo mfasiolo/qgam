@@ -3,20 +3,25 @@
 ##########
 
 ####### Check loss function
-checkloss <- function(y, mu, qu){
+.checkloss <- function(y, mu, qu, add = TRUE){
   
   tau <- 1 - qu
   
   d <- y - mu
   
-  l <- - sum( tau*d[d<0] ) - sum( (tau-1)*d[d>0] )
+  l <- d * 0
+
+  l[d < 0] <- - tau*d[d<0]
+  l[d > 0] <- - (tau-1)*d[d>0]
+
+  if( add ) l <- sum(l)
   
   return( l )
   
 } 
 
 #### Vettorize check Loss function
-checklossVett <- function(y, mu, p){
+.checklossVett <- function(y, mu, p){
   
   n <- length( p )
   
@@ -30,7 +35,7 @@ checklossVett <- function(y, mu, p){
 
 
 #### Vettorized empirical cdf
-qqVett <- function(y, mu){
+.qqVett <- function(y, mu){
   
   nq <- ncol( mu )
   nobs <- length( y )
@@ -54,7 +59,7 @@ qqVett <- function(y, mu){
 #' @param qu A scalar in (0, 1) representing the quantile of interest, which should be an element of \code{names(obj$fit)}.
 #' @param fun The method or function that we want to use on the \code{gamObject} corresponding to quantile \code{qu}. For instance
 #'            \code{predict}, \code{plot} or \code{summary}.
-#' @param ... Addinal arguments to be passed to \code{fun}.
+#' @param ... Additional arguments to be passed to \code{fun}.
 #' @return The output of \code{fun}, whatever that is.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @examples
@@ -62,7 +67,7 @@ qqVett <- function(y, mu){
 #' 
 #' quSeq <- c(0.4, 0.6)
 #' set.seed(737)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = quSeq, 
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
 #'              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
 #' 
 #' qdo(fit, 0.4, summary)
@@ -103,7 +108,7 @@ qdo <- function(obj, qu, fun, ...){
 #' 
 #' quSeq <- c(0.4, 0.5, 0.6)
 #' set.seed(737)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = quSeq, 
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
 #'              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
 #' 
 #' checkLearn(fit$calibr)

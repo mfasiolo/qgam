@@ -17,10 +17,10 @@ By default the variables are taken from environment(formula): typically the envi
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
 \item{lsig}{The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-parameter is estimated by posterior calibration described in XXX. Obviously, the function is much faster
+parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
 if the user provides a value.}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -38,6 +38,8 @@ have the correct environment set up for computing.}
 
 \item{controlGam}{A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
 See the \code{control} argument in \code{?mgcv::gam}.}
+
+\item{...}{additional arguments passed to \code{mgcv::gam}.}
 }
 \value{
 A \code{gamObject}. See \code{?gamObject}.
@@ -53,7 +55,7 @@ library(qgam); library(MASS)
 
 # Fit for quantile 0.8 using the best sigma
 set.seed(6436)
-fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.01, qu = 0.8)
+fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = 0.8)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -63,20 +65,6 @@ lines(xSeq$times, pred$fit, lwd = 1)
 lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)   
 
-# The variance is clearly not constant, so it makes sense to consider a gamlss quantile regression model.
-# Notice that here we re-use previously calibrated log-sigma and we increase err, to speed up computation.
-set.seed(6436)
-fit2 <- qgam(list(accel~s(times, k=20, bs="ad"), ~ s(times)), data = mcycle, err = 0.05, qu = 0.8, 
-             lsig = fit$family$getTheta()) # <- re-use previously calibrated log-sigma
-
-# Plot the fit
-xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
-pred <- predict(fit2, newdata = xSeq, se=TRUE)
-plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
-lines(xSeq$times, pred$fit[ , 1], lwd = 1)
-lines(xSeq$times, pred$fit[ , 1] + 2*pred$se.fit[ , 1], lwd = 1, col = 2)
-lines(xSeq$times, pred$fit[ , 1] - 2*pred$se.fit[ , 1], lwd = 1, col = 2)
-
 #####
 # Multivariate Gaussian example
 ####
@@ -85,10 +73,14 @@ set.seed(2)
 dat <- gamSim(1,n=400,dist="normal",scale=2)
 b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3),data=dat)
 
-fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.01, qu = 0.8)
-plot(fit)                          
+fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
+plot(fit, scale = F, pages = 1)                          
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+            \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 }
 
