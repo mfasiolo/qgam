@@ -10,7 +10,7 @@
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param lsig A vector of value of the log learning rate (log(sigma)) over which the calibration loss function is evaluated.
 #' @param qu The quantile of interest. Should be in (0, 1).
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -30,6 +30,8 @@
 #'                   See the \code{control} argument in \code{?mgcv::gam}.
 #' @return A vector containing the value of the calibration loss function corresponding to each value of log(sigma).
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+#'             \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 #' @examples
 #' library(qgam); library(MASS)
 #' 
@@ -38,7 +40,7 @@
 #' sigSeq <- seq(1.5, 5, length.out = 10)
 #' closs <- tuneLearn(form = accel~s(times,k=20,bs="ad"), 
 #'                    data = mcycle, 
-#'                    err = 0.01, 
+#'                    err = 0.05, 
 #'                    lsig = sigSeq, 
 #'                    qu = 0.5)
 #' 
@@ -49,7 +51,7 @@
 #' abline(v = best, lty = 2)
 #' 
 #' # Fit using the best sigma
-#' fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.01, lsig = best)
+#' fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.05, lsig = best)
 #' summary(fit)
 #' 
 #' pred <- predict(fit, se=TRUE)
@@ -89,9 +91,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     registerDoSNOW(cluster)
   }
   
-  # Create K boostrap dataset
-  ind <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
-  boot <- lapply(ind, function(ff) data[ff, ] )
+  # Create indexes of K boostrap dataset
+  bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
 
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
@@ -136,7 +137,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   
   # Loop over bootstrap datasets to get standardized deviations from full data fit
   withCallingHandlers({
-    z <- llply( .data = boot, 
+    z <- llply( .data = bootInd, 
                 .fun = .getBootDev,
                 .parallel = multicore,
                 .progress = ctrl[["progress"]],
@@ -166,10 +167,12 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
 # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. 
 # To be run in parallel.
 ###########
-.getBootDev <- function(bdat, data, lsig, form, fam, qu, mainFit, controlGam)
+.getBootDev <- function(bindex, data, lsig, form, fam, qu, mainFit, controlGam)
 { 
   nt <- length( lsig )
-  n <- nrow( bdat )
+  n <- length( bindex )
+  
+  bdat <- data[bindex, ]
   
   init <- NULL
   
@@ -180,8 +183,11 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   .z <- matrix(NA, nt, n)
   for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
   {   
+    # In the gamlss case lambda is a vector, and we have to take only those values that are in the boostrapped dataset.
+    lambda <- mainFit[[ii]]$lam[ if(is.formula(form)){ 1 } else { bindex } ]
+    
     bObj$lsp0 <- log( mainFit[[ii]]$sp )
-    bObj$family$putLam( mainFit[[ii]]$lam )
+    bObj$family$putLam( lambda )
     bObj$family$putTheta( lsig[ii] )
     
     fit <- gam(G = bObj, start = init)

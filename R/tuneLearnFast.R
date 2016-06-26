@@ -8,7 +8,7 @@
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See XXX for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -43,6 +43,8 @@
 #'                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
 #' }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+#'             \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
 #' @examples
 #' library(qgam); library(MASS)
 #' 
@@ -53,12 +55,12 @@
 #' set.seed(5235)
 #' tun <- tuneLearnFast(form = accel~s(times,k=20,bs="ad"), 
 #'                      data = mcycle, 
-#'                      err = 0.01, 
+#'                      err = 0.05, 
 #'                      qu = 0.2)
 #' 
 #' # Fit for quantile 0.2 using the best sigma
 #' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2,
-#'             err = 0.01, lsig = tun$lsig)
+#'             err = 0.05, lsig = tun$lsig)
 #' 
 #' pred <- predict(fit, se=TRUE)
 #' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -71,16 +73,16 @@
 #' # Multiple quantile fits
 #' ###
 #' # Calibrate learning rate on a grid
-#' quSeq <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+#' quSeq <- c(0.25, 0.5, 0.75)
 #' set.seed(5235)
 #' tun <- tuneLearnFast(form = accel~s(times, k=20, bs="ad"), 
 #'                      data = mcycle, 
-#'                      err = 0.01, 
+#'                      err = 0.05, 
 #'                      qu = quSeq)
 #' 
 #' # Fit using estimated sigmas
 #' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq,
-#'              err = 0.01, lsig = tun$lsig)
+#'              err = 0.05, lsig = tun$lsig)
 #' 
 #' # Plot fitted quantiles
 #' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -118,9 +120,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   # Sanity check
   if( tol > 0.1 * abs(diff(brac)) ) stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
   
-  # Create K boostrap dataset
-  tmp <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
-  boot <- lapply(tmp, function(ff) data[ff, ] )
+  # Create indexes of K boostrap dataset
+  bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
@@ -154,9 +155,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   mObj <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
   
   # Create a gam object for each bootstrap sample
-  bObj <- lapply(boot, function(bdat){
-    out <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), data = bdat, 
+  bObj <- lapply(bootInd, function(.ind){
+    out <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), 
+               data = data[.ind, ], 
                sp = gausFit$sp, control = controlGam, fit = FALSE)
+    # Save boostrap indexes to be used later 
+    out$bootInd <- .ind
     return( out )
   })
   
@@ -339,11 +343,15 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
       tmp <- lapply(ind, 
                     function(kk){
                       
-                      .obj <- bObj[[kk]]; .pMat <- pMat[[kk]]; .init <- initB[[kk]]; 
+                      .obj <- bObj[[kk]]; .pMat <- pMat[[kk]]; .init <- initB[[kk]];
+                      
+                      # In gamlss case lambda is not constant, so we pick the 
+                      # right values for the k-th bootstrap dataset
+                      .lambda <- if(is.formula(.obj$formula)){ lam[1] } else { lam[.obj$bootInd] }
                       
                       .obj$lsp0 <- log( mSP )
                       .obj$family$putQu( qu )
-                      .obj$family$putLam( lam )
+                      .obj$family$putLam( .lambda )
                       .obj$family$putTheta( lsig )
                       
                       fit <- gam(G = .obj, start = .init)
