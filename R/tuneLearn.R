@@ -111,6 +111,20 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   # Create gam object for full data fits
   mainObj <- gam(form, family = get(fam)(qu = qu, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
   
+  # Store degrees of freedom for each value of lsig
+  tmp <- pen.edf(gausFit)
+  if( length(tmp) )
+  {
+    edfStore <- matrix(NA, nt, length(tmp) + 1)
+    colnames(edfStore) <- c("lsig", names( tmp ))
+  } else {
+    edfStore <- NULL
+  } 
+  
+  # Vector indicating convergence problems
+  convProb <- rep(FALSE, nt)
+  names(convProb) <- lsig
+
   # FULL data fits, used to estimate the smoothing parameters 
   mainFit <- vector("list", nt)
   for( ii in nt:1 ) # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harder)
@@ -124,10 +138,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
       {
-        message( paste("log(sigma) = ", round(lsig[ii], 6), " : outer Newton did not converge fully.", sep = "") )
+        message( paste("log(sigma) = ", round(lsig[ii], 3), " : outer Newton did not converge fully.", sep = "") )
+        convProb[ii] <<- TRUE
         invokeRestart("muffleWarning")
       }
     })
+    
+    if( !is.null(edfStore) ) { edfStore[ii, ] <- c(lsig[ii], pen.edf(fit)) }
     
     initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
     
@@ -159,7 +176,10 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)
   
-  return( loss )
+  out <- list("loss" = loss, "edf" = edfStore, "convProb" = convProb)
+  attr(out, "class") <- "tuneLearn"
+  
+  return( out )
 }
 
 

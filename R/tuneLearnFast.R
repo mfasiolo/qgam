@@ -139,13 +139,13 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   
   # (Optional) Initializing the search range for sigma
   if( is.null(ctrl[["init"]]) ){
-    # We assume lam~0 and we match (5 times) the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
+    # We assume lam~0 and we match (2 times) the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
-    if( !is.list(formula) ){
-      isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+    if( !is.list(form) ){
+      isig <- log(sqrt( 5 * gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     } else {
-      isig <- log(sqrt( (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( 5 * (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     }
   } else {
     isig <- ctrl[["init"]]
@@ -284,6 +284,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   names(sigs) <- qu
   
   out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store)
+  attr(out, "class") <- "tuneLearnFast"
   
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)

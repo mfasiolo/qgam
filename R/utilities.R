@@ -116,6 +116,49 @@ qdo <- function(obj, qu, fun, ...){
 #'
 checkLearn <- function(cal)
 {  
+  
+  if( class(cal) == "tuneLearnFast" )
+  {
+    .checkLearnFast(cal)
+  } else
+  {
+    if( class(cal) == "tuneLearn" )
+    {
+      .checkLearn(cal)
+    } else {
+      stop("cal should be either of class \"tuneLearn\" or \"tuneLearnFast\"")
+    }
+  }
+  
+  return( invisible(NULL) )
+}
+
+#####
+# Internal dealing with output of tuneLearn()
+.checkLearn <- function(cal)
+{
+  sig <- as.numeric( names( cal$loss ) )
+  
+  readline(prompt = "Press <Enter> to see the next plot...")
+  plot(sig, cal$loss, type = "b", ylab = "Calibration Loss", xlab = expression("log(" * sigma * ")"))
+  rug(sig[cal$convProb], side = 3, col = 2, lwd = 2)
+  
+  if( !is.null(cal$edf) )
+  {
+    readline(prompt = "Press <Enter> to see the next plot...")
+    nc <- ncol(cal$edf)
+    matplot(cal$edf[ , 1], cal$edf[ , 2:nc], type = 'b', ylab = "Penalized EDF", xlab = expression("log(" * sigma * ")"), 
+            pch = 1:nc, col = 1:nc)
+    legend("bottomleft", colnames(cal$edf)[2:nc], pch = 1:nc, col = 1:nc)
+    rug(sig[cal$convProb], side = 3, col = 2, lwd = 2)
+  }
+  
+  return( invisible(NULL) )
+}
+
+# Internal dealing with output of tuneLearnFast()
+.checkLearnFast <- function(cal)
+{
   est <- cal$store
   brac <- cal$ranges
   lsig <- cal$lsig
@@ -124,9 +167,9 @@ checkLearn <- function(cal)
   qu <- as.numeric(names(cal$lsig))
   nq <- length(qu)
   
-  layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), 
-         heights=c(2, 1))
-  oldPar <- par(mai = c(1, 1, 0.1, 0.1))
+  layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), heights=c(2, 1))
+  oldPar <- par(no.readonly = TRUE)
+  par(mai = c(1, 1, 0.1, 0.1))
   plot(qu, lsig, ylim = range(as.vector(brac)), xlim = range(qu)+c(-1e-5,+1e-5), col = 2, 
        ylab = expression("Log(" * sigma * ")"), xlab = "Quantile")
   points(qu, brac[ , 1], pch = 3)
@@ -155,5 +198,4 @@ checkLearn <- function(cal)
   par(oldPar)
   
   return( invisible(NULL) )
-  
 }
