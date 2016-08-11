@@ -112,7 +112,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
       dl <- dlogis(z-mu, 0, lam*sig)
       pl <- plogis(z-mu, 0, lam*sig)
       
-      l <- tau * z - lam * .log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) )
+      l <- tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) )
       
       ls <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))
       
@@ -151,7 +151,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     dl <- dlogis(z-mu, 0, lam*sig)
     pl <- plogis(z-mu, 0, lam*sig)
     
-    l <- sum( tau * z - lam * .log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) )
+    l <- sum( tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) )
     
     if (deriv>0) {
       
@@ -180,7 +180,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     if (deriv>1) {
       
       zl <- z / lam
-      der <- .sigmoid(zl, deriv = TRUE)
+      der <- sigmoid(zl, deriv = TRUE)
       
       ## the third derivatives
       ## order mmm,mms,mss,sss
