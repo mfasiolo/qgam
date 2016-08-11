@@ -1,5 +1,5 @@
 ## Computes log(1+exp(x)) accurately
-.log1pexp <- function(x)
+log1pexp <- function(x)
 {
   big <- which(x > 18)
   
