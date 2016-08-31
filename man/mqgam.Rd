@@ -6,7 +6,7 @@
 \usage{
 mqgam(form, data, qu, lsig = NULL, err = 0.01,
   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
-  1, paropts = list(), control = list(), controlGam = list())
+  1, paropts = list(), control = list(), argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -36,8 +36,8 @@ have the correct environment set up for computing.}
 
 \item{control}{A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.}
 
-\item{controlGam}{A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-See the \code{control} argument in \code{?mgcv::gam}.}
+\item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
 }
 \value{
 A list with entries: \itemize{
@@ -81,7 +81,6 @@ for(iq in quSeq){
 library(qgam)
 set.seed(2)
 dat <- gamSim(1, n=400, dist="normal", scale=2)
-b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat)
 
 fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration

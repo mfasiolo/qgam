@@ -135,7 +135,8 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
     theta <- get(".theta")
     lam <- get(".lam")
     
-    if(!is.null(offset[[1]])) stop("offset not still available for this family")
+    # If offset is not null or a vector of zeros, give an error
+    if( !is.null(offset[[1]]) && sum(abs(offset)) )  stop("offset not still available for this family")
     
     jj <- attr(X,"lpi") ## extract linear predictor index
     eta <- X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]

@@ -6,7 +6,7 @@
 \usage{
 tuneLearnFast(form, data, qu, err = 0.01, multicore = !is.null(cluster),
   cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-  control = list(), controlGam = list())
+  control = list(), argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -45,8 +45,8 @@ have the correct environment set up for computing.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 }}
 
-\item{controlGam}{A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-See the \code{control} argument in \code{?mgcv::gam}.}
+\item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
 }
 \value{
 A list with entries: \itemize{

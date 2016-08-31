@@ -20,8 +20,8 @@
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
-#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-#'                   See the \code{control} argument in \code{?mgcv::gam}.
+#' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+#'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
 #' @return A list with entries: \itemize{
 #'                   \item{\code{fit} = a \code{gamObject}, one for each entry of \code{qu}.  Notice that the
 #'                                      slots \code{model} and \code{smooth} of each object has been removed to save memory. 
@@ -62,7 +62,6 @@
 #' library(qgam)
 #' set.seed(2)
 #' dat <- gamSim(1, n=400, dist="normal", scale=2)
-#' b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat)
 #' 
 #' fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
 #'              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration
@@ -72,7 +71,7 @@
 #'
 mqgam <- function(form, data, qu, lsig = NULL, err = 0.01, 
                   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-                  control = list(), controlGam = list())
+                  control = list(), argGam = NULL)
 {
   nt <- length(qu)
   
@@ -86,9 +85,9 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   if( is.null(ctrl[["gausFit"]]) )
   {
     if( is.formula(form) ){
-      gausFit <- gam(form, data = data)
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     } else {
-      gausFit <- gam(form, data = data, family = gaulss(b=ctrl$b), control = controlGam)
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
     }
     ctrl[["gausFit"]] <- gausFit
   }
@@ -99,7 +98,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   if( is.null(lsig) ) { # Selecting the learning rate sigma OR ....
     learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu,
                            multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,
-                           control = ctrl, controlGam = controlGam)
+                           control = ctrl, argGam = argGam)
     lsig <- learn$lsig
     out[["calibr"]] <- learn
   } else { # ... use the one provided by the user
@@ -112,7 +111,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   # Fitting a quantile model for each qu
   out[["fit"]] <- lapply(1:nt, function(ii){
     
-    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err, multicore = FALSE, control = ctrl, controlGam = controlGam)
+    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err, multicore = FALSE, control = ctrl, argGam = argGam)
     
     # Removing data and smooth matrix to reduce memory requirements. There quantities
     # are kept only inside the first fit ( qfit[[1]] )

@@ -6,7 +6,7 @@
 \usage{
 tuneLearn(form, data, lsig, qu, err = 0.01, multicore = !is.null(cluster),
   cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-  control = list(), controlGam = list())
+  control = list(), argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -40,11 +40,19 @@ have the correct environment set up for computing.}
                                           is reported. Set it to \code{"none"} to avoid it.}
 }}
 
-\item{controlGam}{A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-See the \code{control} argument in \code{?mgcv::gam}.}
+\item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
 }
 \value{
-A vector containing the value of the calibration loss function corresponding to each value of log(sigma).
+A list with entries: \itemize{
+                  \item{\code{loss} = vector containing the value of the calibration loss function corresponding 
+                                      to each value of log(sigma).}
+                  \item{\code{edf} = a matrix where the first colums contain the log(sigma) sequence, and the remaining
+                                     columns contain the corresponding effective degrees of freedom of each smooth.}
+                  \item{\code{convProb} = a logical vector indicating, for each value of log(sigma), whether the outer
+                                          optimization which estimates the smoothing parameters has encountered convergence issues.
+                                          \code{FALSE} means no problem.}
+                                          }
 }
 \description{
 The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
@@ -63,10 +71,10 @@ closs <- tuneLearn(form = accel~s(times,k=20,bs="ad"),
                    lsig = sigSeq, 
                    qu = 0.5)
 
-plot(sigSeq, closs, type = "b", ylab = "Calibration Loss", xlab = "log(sigma)")
+plot(sigSeq, closs$loss, type = "b", ylab = "Calibration Loss", xlab = "log(sigma)")
 
 # Pick best log-sigma
-best <- sigSeq[ which.min(closs) ]
+best <- sigSeq[ which.min(closs$loss) ]
 abline(v = best, lty = 2)
 
 # Fit using the best sigma

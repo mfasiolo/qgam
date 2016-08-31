@@ -31,8 +31,8 @@
 #'                                      See \code{?optimize} for details.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 #' }
-#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-#'                   See the \code{control} argument in \code{?mgcv::gam}.
+#' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+#'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
 #' @return A list with entries: \itemize{
 #'                   \item{\code{lsig} = a vector containing the values of log(sigma) that minimize the loss function, 
 #'                                       for each quantile.}
@@ -95,7 +95,7 @@
 #'
 tuneLearnFast <- function(form, data, qu, err = 0.01,
                           multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-                          control = list(), controlGam = list())
+                          control = list(), argGam = NULL)
 { 
   n <- nrow(data)
   nq <- length(qu)
@@ -125,12 +125,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
-    fam <- "logF"
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- gam(form, data = data, control = controlGam) } else { gausFit <- ctrl$gausFit }
+    fam <- "logF"                      
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam)) } else { gausFit <- ctrl$gausFit }
     varHat <- gausFit$sig2
   } else {
-    fam <- "logFlss"
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam) } else { gausFit <- ctrl$gausFit }
+    fam <- "logFlss"                 
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) } else { gausFit <- ctrl$gausFit }
     varHat <- 1/gausFit$fit[ , 2]^2
   }
   
@@ -152,13 +152,13 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   }
   
   # Create gam object for full data fits
-  mObj <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
+  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
+                                "data" = data, "fit" = FALSE), argGam))
   
   # Create a gam object for each bootstrap sample
   bObj <- lapply(bootInd, function(.ind){
-    out <- gam(form, family = get(fam)(qu = NA, lam = NA, theta = NA), 
-               data = data[.ind, ], 
-               sp = gausFit$sp, control = controlGam, fit = FALSE)
+    out <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
+                                 "data" = data[.ind, ], "sp" = gausFit$sp, "fit" = FALSE), argGam))
     # Save boostrap indexes to be used later 
     out$bootInd <- .ind
     return( out )
@@ -225,7 +225,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
       res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err, srange = srange, 
                              gausFit = gausFit, varHat = varHat,
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
-                             control = ctrl, controlGam = controlGam)  
+                             control = ctrl, argGam = argGam)  
       
       # Store loss function evaluations
       store[[oi]] <- cbind(store[[oi]], res[["store"]])
@@ -298,7 +298,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
 .tuneLearnFast <- function(mObj, bObj, pMat, qu, err, srange,
                            gausFit, varHat,
                            multicore, cluster, ncores, paropts, 
-                           control, controlGam)
+                           control, argGam)
 {
   nbo <- length( bObj )
   
@@ -323,7 +323,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
     
     # Full data fit
     withCallingHandlers({
-      mFit <- gam(G = mObj, in.out = initM[["in.out"]], start = initM[["start"]])}, warning = function(w) {
+      mFit <- do.call("gam", c(list("G" = mObj, "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam))}, warning = function(w) {
         if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
             length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
         {
@@ -355,7 +355,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
                       .obj$family$putLam( .lambda )
                       .obj$family$putTheta( lsig )
                       
-                      fit <- gam(G = .obj, start = .init)
+                      fit <- do.call("gam", c(list("G" = .obj, "start" = .init), argGam))
                       
                       .init <- betas <- coef(fit)
                       Vp <- fit$Vp
@@ -385,7 +385,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
     if( !is.null(cluster) ){
       nc <- length(cluster)
       environment(.funToApply) <- .GlobalEnv
-      clusterExport(cluster, c("initB", "mSP", "mMU", "lam", "lsig", "qu"), envir = environment())
+      clusterExport(cluster, c("initB", "mSP", "mMU", "lam", "lsig", "qu", "argGam"), envir = environment())
     } else {
       nc <- 1
     }

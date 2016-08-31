@@ -26,9 +26,17 @@
 #'                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
 #'                                           is reported. Set it to \code{"none"} to avoid it.}
 #' }
-#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-#'                   See the \code{control} argument in \code{?mgcv::gam}.
-#' @return A vector containing the value of the calibration loss function corresponding to each value of log(sigma).
+#' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+#'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
+#' @return A list with entries: \itemize{
+#'                   \item{\code{loss} = vector containing the value of the calibration loss function corresponding 
+#'                                       to each value of log(sigma).}
+#'                   \item{\code{edf} = a matrix where the first colums contain the log(sigma) sequence, and the remaining
+#'                                      columns contain the corresponding effective degrees of freedom of each smooth.}
+#'                   \item{\code{convProb} = a logical vector indicating, for each value of log(sigma), whether the outer
+#'                                           optimization which estimates the smoothing parameters has encountered convergence issues.
+#'                                           \code{FALSE} means no problem.}
+#'                                           }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
 #'             \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
@@ -44,10 +52,10 @@
 #'                    lsig = sigSeq, 
 #'                    qu = 0.5)
 #' 
-#' plot(sigSeq, closs, type = "b", ylab = "Calibration Loss", xlab = "log(sigma)")
+#' plot(sigSeq, closs$loss, type = "b", ylab = "Calibration Loss", xlab = "log(sigma)")
 #' 
 #' # Pick best log-sigma
-#' best <- sigSeq[ which.min(closs) ]
+#' best <- sigSeq[ which.min(closs$loss) ]
 #' abline(v = best, lty = 2)
 #' 
 #' # Fit using the best sigma
@@ -64,7 +72,7 @@
 #'
 tuneLearn <- function(form, data, lsig, qu, err = 0.01, 
                       multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-                      control = list(), controlGam = list() )
+                      control = list(), argGam = NULL)
 { 
   if( length(qu) > 1 ) stop("length(qu) > 1, but this method works only for scalar qu")
   
@@ -97,19 +105,19 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
     fam <- "logF"
-    gausFit <- gam(form, data = data, control = controlGam)
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     varHat <- gausFit$sig2
     initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
   } else {
     fam <- "logFlss"
-    gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam)
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
     initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Create gam object for full data fits
-  mainObj <- gam(form, family = get(fam)(qu = qu, lam = NA, theta = NA), data = data, control = controlGam, fit = FALSE)
+  mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = data, fit = FALSE), argGam))
   
   # Store degrees of freedom for each value of lsig
   tmp <- pen.edf(gausFit)
@@ -133,7 +141,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     mainObj$family$putTheta( lsig[ii] )
     
     withCallingHandlers({
-    fit <- gam(G = mainObj, in.out = initM[["in.out"]], start = initM[["start"]]) 
+    fit <- do.call("gam", c(list("G" = mainObj, "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam)) 
     }, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
@@ -161,7 +169,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
                 .inform = ctrl[["verbose"]],
                 .paropts = paropts,
                 # ... from here
-                data = data, lsig = lsig, form = form, fam = fam, qu = qu, mainFit = mainFit, controlGam = controlGam)
+                data = data, lsig = lsig, form = form, fam = fam, qu = qu, mainFit = mainFit, argGam = argGam)
   }, warning = function(w) {
     # There is a bug in plyr concerning a useless warning about "..."
     if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
@@ -187,7 +195,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
 # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. 
 # To be run in parallel.
 ###########
-.getBootDev <- function(bindex, data, lsig, form, fam, qu, mainFit, controlGam)
+.getBootDev <- function(bindex, data, lsig, form, fam, qu, mainFit, argGam)
 { 
   nt <- length( lsig )
   n <- length( bindex )
@@ -197,8 +205,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   init <- NULL
   
   # Create gam object
-  bObj <- gam(form, family = get(fam)(qu = qu, lam = NA, theta = NA), data = bdat, 
-              sp = mainFit[[1]]$sp, control = controlGam, fit = FALSE)
+  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = bdat, 
+                                "sp" = mainFit[[1]]$sp, fit = FALSE), argGam))
   
   .z <- matrix(NA, nt, n)
   for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
@@ -210,7 +218,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     bObj$family$putLam( lambda )
     bObj$family$putTheta( lsig[ii] )
     
-    fit <- gam(G = bObj, start = init)
+    fit <- do.call("gam", c(list("G" = bObj, "start" = init), argGam))
     init <- betas <- coef(fit)
     Vp <- fit$Vp
     

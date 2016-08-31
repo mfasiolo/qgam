@@ -20,8 +20,8 @@
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
-#' @param controlGam A list of control parameters to be passed to the internal \code{mgcv::gam} calls. 
-#'                   See the \code{control} argument in \code{?mgcv::gam}.
+#' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
+#'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
 #' @param ... additional arguments passed to \code{mgcv::gam}.
 #' @return A \code{gamObject}. See \code{?gamObject}.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
@@ -52,7 +52,6 @@
 #' library(qgam)
 #' set.seed(2)
 #' dat <- gamSim(1,n=400,dist="normal",scale=2)
-#' b <- gam(y~s(x0)+s(x1)+s(x2)+s(x3),data=dat)
 #' 
 #' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
 #' plot(fit, scale = F, pages = 1)                          
@@ -60,7 +59,7 @@
 #'
 qgam <- function(form, data, qu, lsig = NULL, err = 0.01, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-                 control = list(), controlGam = list(), ...)
+                 control = list(), argGam = NULL)
 {
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
   
@@ -73,23 +72,23 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
     fam <- "logF"
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- gam(form, data = data, control = controlGam) }
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam)) }
     varHat <- ctrl$gausFit$sig2
   } else {
     fam <- "logFlss"
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- gam(form, data = data, family = gaulss(b=ctrl[["b"]]), control = controlGam) }
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) }
     varHat <- 1/ctrl$gausFit$fit[ , 2]^2
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Selecting the learning rate sigma
   if( is.null(lsig) ) {  
-    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = ctrl, controlGam = controlGam)
+    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
   }
   
   # Fit model
   lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
-  fit <- gam(form, family = get(fam)(qu = qu, lam = lam, theta = lsig), data = data, control = controlGam, ...)
+  fit <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = lam, theta = lsig), "data" = data), argGam))
   
   return( fit )
 }
