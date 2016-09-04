@@ -236,7 +236,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
     }
     
     mu <- pMat %*% betas
-    sdev <- sqrt( diag( pMat%*%Vp%*%t(pMat) ) )
+    sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
     
     .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
   }

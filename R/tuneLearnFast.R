@@ -341,43 +341,41 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
     # GLOBAL VARS: bObj, pMat, initB, mSP, mMU, lam, lsig, qu
     .funToApply <- function(ind)
     {
-      tmp <- lapply(ind, 
-                    function(kk){
-                      
-                      .obj <- bObj[[kk]]; .pMat <- pMat[[kk]]; .init <- initB[[kk]];
-                      
-                      # In gamlss case lambda is not constant, so we pick the 
-                      # right values for the k-th bootstrap dataset
-                      .lambda <- if(is.formula(.obj$formula)){ lam[1] } else { lam[.obj$bootInd] }
-                      
-                      .obj$lsp0 <- log( mSP )
-                      .obj$family$putQu( qu )
-                      .obj$family$putLam( .lambda )
-                      .obj$family$putTheta( lsig )
-                      
-                      fit <- do.call("gam", c(list("G" = .obj, "start" = .init), argGam))
-                      
-                      .init <- betas <- coef(fit)
-                      Vp <- fit$Vp
-                      
-                      # In the gamlss case, we are interested only in the calibrating the location model
-                      # so we drop the coefficients related to the scale model
-                      lpi <- attr(.pMat, "lpi")
-                      if( !is.null(lpi) ){
-                        betas <- betas[lpi[[1]]]
-                        Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
-                      }
-                      
-                      # Calculating stardardized deviations from full data fit
-                      mu <- .pMat %*% betas
-                      sdev <- sqrt( diag( .pMat%*%Vp%*%t(.pMat) ) )
-                      .z <- (mu - mMU) / sdev
-                      
-                      return( list("z" = .z, "init" = .init) )
-                    })
+      z <- init <- vector("list", length(ind))
+      for( kk in ind){
+        .obj <- bObj[[kk]]; .pMat <- pMat[[kk]]; .init <- initB[[kk]];
+        
+        # In gamlss case lambda is not constant, so we pick the 
+        # right values for the k-th bootstrap dataset
+        .lambda <- if(is.formula(.obj$formula)){ lam[1] } else { lam[.obj$bootInd] }
+        
+        .obj$lsp0 <- log( mSP )
+        .obj$family$putQu( qu )
+        .obj$family$putLam( .lambda )
+        .obj$family$putTheta( lsig )
+        
+        fit <- do.call("gam", c(list("G" = .obj, "start" = .init), argGam))
+        
+        .init <- betas <- coef(fit)
+        Vp <- fit$Vp
+        
+        # In the gamlss case, we are interested only in the calibrating the location model
+        # so we drop the coefficients related to the scale model
+        lpi <- attr(.pMat, "lpi")
+        if( !is.null(lpi) ){
+          betas <- betas[lpi[[1]]]
+          Vp <- fit$Vp[lpi[[1]], lpi[[1]]]
+        }
+        
+        # Calculating stardardized deviations from full data fit
+        mu <- .pMat %*% betas
+        sdev <- sqrt(rowSums((.pMat %*% Vp) * .pMat)) # same as sqrt(diag(.pMat%*%Vp%*%t(.pMat))) but (WAY) faster
+        
+        z[[kk]] <- (mu - mMU) / sdev
+        init[[kk]] <- .init
+      }
       
-      z <- as.vector(sapply(tmp, "[[", "z"))
-      init <- lapply(tmp, "[[", "init")
+      z <- do.call("c", z)
       
       return( list("z" = z, "init" = init) )
     }
