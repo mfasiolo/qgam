@@ -81,6 +81,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Selecting the learning rate sigma
+  learn <- NULL
   if( is.null(lsig) ) {  
     learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
@@ -89,6 +90,8 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.01,
   # Fit model
   lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
   fit <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = lam, theta = lsig), "data" = data), argGam))
+  
+  fit$calibr <- learn
   
   return( fit )
 }

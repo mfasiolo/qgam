@@ -167,8 +167,8 @@ checkLearn <- function(cal)
   qu <- as.numeric(names(cal$lsig))
   nq <- length(qu)
   
-  layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), heights=c(2, 1))
   oldPar <- par(no.readonly = TRUE)
+  layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), heights=c(2, 1))
   par(mai = c(1, 1, 0.1, 0.1))
   plot(qu, lsig, ylim = range(as.vector(brac)), xlim = range(qu)+c(-1e-5,+1e-5), col = 2, 
        ylab = expression("Log(" * sigma * ")"), xlab = "Quantile")

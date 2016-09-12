@@ -29,6 +29,7 @@
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 #'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
 #' @return A list with entries: \itemize{
+#'                   \item{\code{lsig} = the value of log(sigma) resulting in the lowest loss.}
 #'                   \item{\code{loss} = vector containing the value of the calibration loss function corresponding 
 #'                                       to each value of log(sigma).}
 #'                   \item{\code{edf} = a matrix where the first colums contain the log(sigma) sequence, and the remaining
@@ -184,7 +185,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.01,
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)
   
-  out <- list("loss" = loss, "edf" = edfStore, "convProb" = convProb)
+  out <- list("lsig" = lsig[which.min(loss)], "loss" = loss, "edf" = edfStore, "convProb" = convProb)
   attr(out, "class") <- "tuneLearn"
   
   return( out )
