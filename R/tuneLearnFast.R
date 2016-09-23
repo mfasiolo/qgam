@@ -98,7 +98,7 @@
 #' }                   
 #' @export tuneLearnFast
 #'
-tuneLearnFast <- function(form, data, qu, err = 0.01,
+tuneLearnFast <- function(form, data, qu, err = 0.05,
                           multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                           control = list(), argGam = NULL)
 { 

@@ -3,7 +3,7 @@ dlf <- function(x, tau, mu, sig, lam, log = FALSE, deriv = 0)
 {
   y <- (x - mu) / sig
   
-  out <- tau * y - lam * .log1pexp( y / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) 
+  out <- tau * y - lam * log1pexp( y / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) 
   
   if( !log ) out <- exp(out)
   

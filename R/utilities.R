@@ -27,7 +27,7 @@
   
   out <- sapply(1:n,
                 function(ii){
-                  return( checkloss(y, mu[ , ii], p[ii]) )
+                  return( .checkloss(y, mu[ , ii], p[ii]) )
                 })
   
   return( out )

@@ -45,8 +45,7 @@
 #' # Fit for quantile 0.8 using the best sigma
 #' quSeq <- c(0.2, 0.4, 0.6, 0.8)
 #' set.seed(6436)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
-#'              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
 #' 
 #' # Plot the fit
 #' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -69,7 +68,7 @@
 #' invisible( qdo(fit, 0.2, plot, pages = 1) )
 #' @export mqgam  
 #'
-mqgam <- function(form, data, qu, lsig = NULL, err = 0.01, 
+mqgam <- function(form, data, qu, lsig = NULL, err = 0.05, 
                   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                   control = list(), argGam = NULL)
 {

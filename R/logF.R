@@ -97,7 +97,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     sig <- exp(theta)
     
     
-    z <- (y - mu) / sig
+    z <- (y - drop(mu)) / sig
     
     term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
     
@@ -108,6 +108,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     
     tau <- 1 - get(".qu")
     lam <- get(".lam")
+    mu <- drop(mu)
     
     ## derivatives of the deviance...
     sig <- exp(theta)
@@ -163,7 +164,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     tau <- 1 - get(".qu")
     lam <- get(".lam")
     
-    z <- (y - mu) / sig
+    z <- (y - drop(mu)) / sig
     
     term <- - tau * z + lam * log1pexp( z / lam ) + log( sig * lam * beta(lam*tau, (1-tau)*lam) )
     

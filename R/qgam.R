@@ -57,7 +57,7 @@
 #' plot(fit, scale = F, pages = 1)                          
 #' @export qgam  
 #'
-qgam <- function(form, data, qu, lsig = NULL, err = 0.01, 
+qgam <- function(form, data, qu, lsig = NULL, err = 0.05, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                  control = list(), argGam = NULL)
 {

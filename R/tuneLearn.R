@@ -71,7 +71,7 @@
 #' lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)                        
 #' @export tuneLearn  
 #'
-tuneLearn <- function(form, data, lsig, qu, err = 0.01, 
+tuneLearn <- function(form, data, lsig, qu, err = 0.05, 
                       multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                       control = list(), argGam = NULL)
 { 

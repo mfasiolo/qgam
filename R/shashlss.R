@@ -115,7 +115,8 @@
     ##        4 - everything.
     npar <- 4
     
-    if(!is.null(offset)) stop("offset not still available for this family")
+    # If offset is not null or a vector of zeros, give an error
+    if( !is.null(offset[[1]]) && sum(abs(offset)) )  stop("offset not still available for this family")
     
     jj <- attr(X,"lpi") ## extract linear predictor index
     
