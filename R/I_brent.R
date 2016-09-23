@@ -70,7 +70,7 @@
 #    Output, real FX, the value F(X).
 #
 
-.brent <- function(brac, f, mObj, bObj, init, pMat, qu, varHat, cluster, t = .Machine$double.eps^0.25, ...)
+.brent <- function(brac, f, mObj, bObj, init, pMat, qu, varHat, cluster, t = .Machine$double.eps^0.25, aTol = 0, ...)
 {
   brac <- sort(brac)
   a <- brac[1]
@@ -106,8 +106,9 @@
     tol = epsi * abs ( x ) + t
     t2 = 2.0 * tol
     
-    #  Check the stopping criterion.
-    if( abs(x-m) <= (t2 - 0.5 * (sb-sa)) ) { break }
+    #  Check the stopping criterion. We exit if we detect convergence or 
+    #  if we detect that we are too close to the bracket extremes
+    if( (abs(x-m) <= (t2 - 0.5 * (sb-sa))) || any(abs(x-c(a, b)) < aTol * abs(b-a)) ) { break }
     
     #  Fit a parabola.
     r = 0.0

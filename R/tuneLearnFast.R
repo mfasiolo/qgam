@@ -18,17 +18,22 @@
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
+#'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
 #'                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
 #'                                       By default \code{init=NULL} and the optimization is initialized by other means.}
 #'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
 #'                                       search range is \code{(init - 0.5, init + 2)}.}
-#'                   \item{\code{redWd} = parameter which determines when the bracket size needs to be reduced.
-#'                                        If \code{redWd==10} then the bracket is halved if the nearest solution
-#'                                        falls within the central 10\% of its width. By default \code{redWd = 10}.}
-#'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
-#'                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
 #'                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
 #'                                      See \code{?optimize} for details.}
+#'                   \item{\code{aTol} = Brent search parameter. If the solution to a Brent get closer than 
+#'                                       \code{aTol * abs(diff(brac))} to one of the extremes of the bracket, the optimization is
+#'                                       stop and restarted with an enlarged and shifted bracket. \code{aTol=0.05} should be > 0 and values > 0.1
+#'                                       don't quite make sense. By default \code{aTol=0.05}.
+#'                   \item{\code{redWd} = parameter which determines when the bracket will be reduced.
+#'                                        If \code{redWd==10} then the bracket is halved if the nearest solution
+#'                                        falls within the central 10\% of the bracket's width. By default \code{redWd = 10}.}
+#'                   \item{\code{b} = offset parameter used by the mgcv::gauslss, which we estimate to initialize the quantile
+#'                                    fit (when a variance model is used). By default \code{b=0}.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 #' }
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
@@ -106,6 +111,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
                 "K" = 50,
                 "redWd" = 10,
                 "tol" = .Machine$double.eps^0.25,
+                "aTol" = 0.05,
                 "b" = 0,
                 "gausFit" = NULL,
                 "verbose" = FALSE )
@@ -206,9 +212,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   store <- vector("list", nq)
   names(sigs) <- names(errors) <- rownames(rans) <- qu
   
-  # Here we need bTol > aTol otherwise we the new bracket will be too close to the probable solution
-  aTol <- 0.05
-  bTol <- 0.2
+  # Here we need bTol > aTol, otherwise the new bracket will be too close to the probable solution
+  bTol <- 4*ctrl$aTol
   
   for(ii in 1:nq)
   {
@@ -232,7 +237,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
       lsig <- res$minimum
       
       # If solution not too close to boundary store results and determine bracket for next iteration
-      if( all(abs(lsig-srange) > aTol * abs(diff(srange))) ){ 
+      if( all(abs(lsig-srange) > ctrl$aTol * abs(diff(srange))) ){ 
         
         sigs[oi] <- lsig
         rans[oi, ] <- srange
@@ -258,7 +263,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
       # If solution is close to bracket boundaries, we shift bracket and expand it
       # This (- wd + bTol*wd)/2 is divided by 2 to make the algorithm more reluctant to reduce lsig
       wd <- abs( diff(brac) )
-      isig <- lsig + ifelse(lsig-srange[1] < aTol*wd, (- wd + bTol*wd)/2, wd - bTol*wd)
+      isig <- lsig + ifelse(lsig-srange[1] < ctrl$aTol*wd, (- wd + bTol*wd)/2, wd - bTol*wd)
       ef <- 2*ef
     }
     
@@ -420,7 +425,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.01,
   # error is of another nature) we throw an error
   repeat{
     res <- tryCatch(.brent(brac=srange, f=objFun, mObj = mObj, bObj = bObj, init = init, 
-                           pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, t = control$tol), 
+                           pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, t = control$tol, aTol = control$aTol), 
                     error = function(e) e)
     
     if("error" %in% class(res)){
