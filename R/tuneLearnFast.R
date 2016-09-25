@@ -8,7 +8,8 @@
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
+#'            same length of \code{qu}. See Fasiolo et al. (2016) for details.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -104,6 +105,14 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
 { 
   n <- nrow(data)
   nq <- length(qu)
+  
+  if( length(err) != nq ){
+    if(length(err) == 1) { 
+      err <- rep(err, nq) 
+    } else {
+        stop("\"err\" should either be a scalar or a vector of the same length as \"qu\".")
+      }
+  }
   
   # Setting up control parameter
   ctrl <- list( "init" = NULL,
@@ -227,7 +236,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
       srange <- isig + ef * brac
       
       # Estimate log(sigma) using brent methods with current bracket (srange)
-      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err, srange = srange, 
+      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err[oi], srange = srange, 
                              gausFit = gausFit, varHat = varHat,
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
                              control = ctrl, argGam = argGam)  

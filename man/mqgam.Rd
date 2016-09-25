@@ -4,7 +4,7 @@
 \alias{mqgam}
 \title{Fit multiple smooth additive quantile regression models}
 \usage{
-mqgam(form, data, qu, lsig = NULL, err = 0.01,
+mqgam(form, data, qu, lsig = NULL, err = 0.05,
   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
   1, paropts = list(), control = list(), argGam = NULL)
 }
@@ -20,7 +20,8 @@ By default the variables are taken from environment(formula): typically the envi
 parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
 if the user provides a value.}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
+same length of \code{qu}. See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -64,8 +65,7 @@ library(qgam); library(MASS)
 # Fit for quantile 0.8 using the best sigma
 quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
-             control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))

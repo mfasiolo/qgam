@@ -10,7 +10,8 @@
 #' @param lsig The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
 #'             parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
 #'             if the user provides a value. 
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
+#'            same length of \code{qu}. See Fasiolo et al. (2016) for details.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -72,7 +73,15 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
                   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                   control = list(), argGam = NULL)
 {
-  nt <- length(qu)
+  nq <- length(qu)
+  
+  if( length(err) != nq ){
+    if(length(err) == 1) { 
+      err <- rep(err, nq) 
+    } else {
+      stop("\"err\" should either be a scalar or a vector of the same length as \"qu\".")
+    }
+  }
   
   # Setting up control parameter (mostly used by tuneLearnFast)
   ctrl <- list( "gausFit" = NULL, "verbose" = FALSE, "b" = 0)
@@ -102,15 +111,15 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     out[["calibr"]] <- learn
   } else { # ... use the one provided by the user
     if( length(lsig) == 1 ) {
-      lsig <- rep(lsig, nt)
+      lsig <- rep(lsig, nq)
     } else {
-      if( length(lsig) != nt ) stop("lsig should either be scalar of a vector of length(qu) ")
+      if( length(lsig) != nq ) stop("lsig should either be scalar or a vector of length(qu) ")
     } }
   
   # Fitting a quantile model for each qu
-  out[["fit"]] <- lapply(1:nt, function(ii){
+  out[["fit"]] <- lapply(1:nq, function(ii){
     
-    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err, multicore = FALSE, control = ctrl, argGam = argGam)
+    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err[ii], multicore = FALSE, control = ctrl, argGam = argGam)
     
     # Removing data and smooth matrix to reduce memory requirements. There quantities
     # are kept only inside the first fit ( qfit[[1]] )

@@ -4,7 +4,7 @@
 \alias{tuneLearn}
 \title{Tuning the learning rate for Gibbs posterior}
 \usage{
-tuneLearn(form, data, lsig, qu, err = 0.01, multicore = !is.null(cluster),
+tuneLearn(form, data, lsig, qu, err = 0.05, multicore = !is.null(cluster),
   cluster = NULL, ncores = detectCores() - 1, paropts = list(),
   control = list(), argGam = NULL)
 }
@@ -45,6 +45,7 @@ in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{da
 }
 \value{
 A list with entries: \itemize{
+                  \item{\code{lsig} = the value of log(sigma) resulting in the lowest loss.}
                   \item{\code{loss} = vector containing the value of the calibration loss function corresponding 
                                       to each value of log(sigma).}
                   \item{\code{edf} = a matrix where the first colums contain the log(sigma) sequence, and the remaining

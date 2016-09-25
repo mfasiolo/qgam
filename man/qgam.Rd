@@ -4,7 +4,7 @@
 \alias{qgam}
 \title{Fit a smooth additive quantile regression model}
 \usage{
-qgam(form, data, qu, lsig = NULL, err = 0.01,
+qgam(form, data, qu, lsig = NULL, err = 0.05,
   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
   1, paropts = list(), control = list(), argGam = NULL)
 }

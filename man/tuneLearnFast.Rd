@@ -4,7 +4,7 @@
 \alias{tuneLearnFast}
 \title{Fast learning rate calibration for the Gibbs posterior}
 \usage{
-tuneLearnFast(form, data, qu, err = 0.01, multicore = !is.null(cluster),
+tuneLearnFast(form, data, qu, err = 0.05, multicore = !is.null(cluster),
   cluster = NULL, ncores = detectCores() - 1, paropts = list(),
   control = list(), argGam = NULL)
 }
@@ -16,7 +16,8 @@ By default the variables are taken from environment(formula): typically the envi
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
+same length of \code{qu}. See Fasiolo et al. (2016) for details.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -29,21 +30,6 @@ which will be used if \code{multicore == TRUE}. The user has to remember to stop
 This is important if (for example) your code relies on external data or packages: 
 use the .export and .packages arguments to supply them so that all cluster nodes 
 have the correct environment set up for computing.}
-
-\item{control}{A list of control parameters for \code{tuneLearn} with entries: \itemize{
-                  \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
-                                      By default \code{init=NULL} and the optimization is initialized by other means.}
-                  \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
-                                      search range is \code{(init - 0.5, init + 2)}.}
-                  \item{\code{redWd} = parameter which determines when the bracket size needs to be reduced.
-                                       If \code{redWd==10} then the bracket is halved if the nearest solution
-                                       falls within the central 10\% of its width. By default \code{redWd = 10}.}
-                  \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
-                  \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
-                  \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
-                                     See \code{?optimize} for details.}
-                  \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
-}}
 
 \item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
