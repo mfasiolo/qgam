@@ -33,7 +33,14 @@ use the .export and .packages arguments to supply them so that all cluster nodes
 have the correct environment set up for computing.}
 
 \item{control}{A list of control parameters for \code{tuneLearn} with entries: \itemize{
-                  \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
+                  \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
+                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+                                      If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
+                                      data.}
+                  \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
+                                     cross-validation. The second option can be used only if \code{ctrl$loss=="pin"}.}
+                  \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
+                                   number of folds. By default \code{K=50}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
@@ -56,9 +63,9 @@ A list with entries: \itemize{
                                           }
 }
 \description{
-The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
-             based on boostrapping. Here the calibration loss function is evaluated on a grid of values
-             provided by the user.
+The learning rate (sigma) of the Gibbs posterior is tuned either by calibrating the credible intervals for the fitted
+             curve, or by minimizing the pinball loss on out-of-sample data. This is done by bootrapping or by k-fold cross-validation. 
+             Here the calibration loss function is evaluated on a grid of values provided by the user.
 }
 \examples{
 library(qgam); library(MASS)

@@ -1,9 +1,9 @@
 ##########################
 #' Tuning the learning rate for Gibbs posterior
 #' 
-#' @description The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
-#'              based on boostrapping. Here the calibration loss function is evaluated on a grid of values
-#'              provided by the user.
+#' @description The learning rate (sigma) of the Gibbs posterior is tuned either by calibrating the credible intervals for the fitted
+#'              curve, or by minimizing the pinball loss on out-of-sample data. This is done by bootrapping or by k-fold cross-validation. 
+#'              Here the calibration loss function is evaluated on a grid of values provided by the user.
 #' 
 #' @param form A GAM formula, or a list of formulae. See ?mgcv::gam details.
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
@@ -20,7 +20,14 @@
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
-#'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
+#'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
+#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+#'                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
+#'                                       data.}
+#'                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
+#'                                      cross-validation. The second option can be used only if \code{ctrl$loss=="pin"}.}
+#'                   \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
+#'                                    number of folds. By default \code{K=50}.}
 #'                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 #'                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
@@ -80,11 +87,14 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   lsig <- sort( lsig )
   
   # Setting up control parameter
-  ctrl <- list( "K" = 50, "b" = 0, "verbose" = FALSE, "progress" = ifelse(multicore, "none", "text") )
+  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "verbose" = FALSE, "progress" = ifelse(multicore, "none", "text") )
    
-  # Checking if the control list contains unknown names
-  # Entries in "control" substitute those in "ctrl"
+  # Checking if the control list contains unknown names. Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
+  
+  if( !(ctrl$loss%in%c("cal", "pin")) ) stop("control$loss should be either \"cal\" or \"pin\" ")
+  if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
+  if( (ctrl$loss=="cal") && (ctrl$sam=="kfold")  ) stop("You can't use control$sam == \"kfold\" when ctrl$loss==\"cal\" ")
   
   n <- nrow(data)
   nt <- length(lsig)
@@ -100,8 +110,12 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     registerDoSNOW(cluster)
   }
   
-  # Create indexes of K boostrap dataset
-  bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  if( ctrl$sam == "boot" ){ # Create indexes of K boostrap dataset OR...
+   bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  } else { # ... OR for K training sets for CV 
+   tmp <- sample(rep(1:ctrl[["K"]], length.out = n), n, replace = FALSE)
+   bootInd <- lapply(1:ctrl[["K"]], function(ii) which(tmp != ii)) 
+  }
 
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
@@ -170,22 +184,26 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
                 .inform = ctrl[["verbose"]],
                 .paropts = paropts,
                 # ... from here
-                data = data, lsig = lsig, form = form, fam = fam, qu = qu, mainFit = mainFit, argGam = argGam)
+                data = data, lsig = lsig, form = form, fam = fam, qu = qu, loss = ctrl$loss, mainFit = mainFit, argGam = argGam)
   }, warning = function(w) {
     # There is a bug in plyr concerning a useless warning about "..."
     if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
       invokeRestart("muffleWarning")
   })
 
-  # Get stardardized deviations and calculate Anderson-Darling normality statistic 
+  # Get stardardized deviations and ... 
   z <- do.call("cbind", z)
-  loss <- apply(z, 1, function(.x) .adTest(as.vector(.x)))
-  names(loss) <- lsig
+  if( ctrl$loss == "cal"){ # ... calculate Anderson-Darling normality statistic OR ...
+   outLoss <- apply(z, 1, function(.x) .adTest(as.vector(.x)))
+  } else { # ... pinball loss
+   outLoss <- apply(z, 1, function(.x) .checkloss(as.vector(.x), 0, qu = qu))
+  }
+  names(outLoss) <- lsig
   
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)
   
-  out <- list("lsig" = lsig[which.min(loss)], "loss" = loss, "edf" = edfStore, "convProb" = convProb)
+  out <- list("lsig" = lsig[which.min(outLoss)], "loss" = outLoss, "edf" = edfStore, "convProb" = convProb)
   attr(out, "class") <- "tuneLearn"
   
   return( out )
@@ -196,12 +214,20 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
 # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. 
 # To be run in parallel.
 ###########
-.getBootDev <- function(bindex, data, lsig, form, fam, qu, mainFit, argGam)
+.getBootDev <- function(bindex, data, lsig, form, fam, qu, loss, mainFit, argGam)
 { 
   nt <- length( lsig )
   n <- length( bindex )
   
-  bdat <- data[bindex, ]
+  # Creating bootstrapped dataset. Redundant levels of factor variable are dropped
+  bdat <- droplevels( data[bindex, ] )
+  
+  if( loss == "cal" ){ # Testing data: full data if we calibrate OR ...
+    odat <- data 
+  } else { # ... and out-of-sample data and responses if we cross-validate on pinball los
+    odat <- data[-bindex, ]  
+    testObs <- odat[[ as.character(if(is.formula(form)){ as.list(form)[[2]] }else{ as.list(form[[1]])[[2]] }) ]]
+  }
   
   init <- NULL
   
@@ -209,7 +235,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = bdat, 
                                 "sp" = mainFit[[1]]$sp, fit = FALSE), argGam))
   
-  .z <- matrix(NA, nt, n)
+  .z <- matrix(NA, nt, nrow(odat))
   for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
   {   
     # In the gamlss case lambda is a vector, and we have to take only those values that are in the boostrapped dataset.
@@ -225,7 +251,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     
     # Create prediction design matrix (only in first iteration)
     if(ii == nt) { 
-      pMat <- predict.gam(fit, newdata = data, type = "lpmatrix") 
+      pMat <- predict.gam(fit, newdata = odat, type = "lpmatrix") 
       lpi <- attr(pMat, "lpi")
       if( !is.null(lpi) ){ pMat <- pMat[ , lpi[[1]]] }
     }
@@ -237,9 +263,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     }
     
     mu <- pMat %*% betas
-    sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
     
-    .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
+    if( loss == "cal" ){ # Return stardardized deviations from full data fit OR ...
+     sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
+     .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
+    } else { # ... out of sample observations minus their fitted values 
+     .z[ii, ] <- testObs - mu
+    }
   }
   
   return( .z )

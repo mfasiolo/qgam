@@ -31,6 +31,33 @@ This is important if (for example) your code relies on external data or packages
 use the .export and .packages arguments to supply them so that all cluster nodes 
 have the correct environment set up for computing.}
 
+\item{control}{A list of control parameters for \code{tuneLearn} with entries: \itemize{
+                  \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
+                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+                                      If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
+                                      data.}
+                  \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
+                                     cross-validation. The second option can be used only if \code{ctrl$loss=="pin"}.}
+                  \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
+                                   number of folds. By default \code{K=50}.}
+                  \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
+                                      By default \code{init=NULL} and the optimization is initialized by other means.}
+                  \item{\code{brac} = initial bracket for Brent method. By default \code{brac=log(c(0.5, 2))}, so the initial 
+                                      search range is \code{(init - log(0.5), init + log(2))}.}
+                  \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
+                                     See \code{?optimize} for details.}
+                  \item{\code{aTol} = Brent search parameter. If the solution to a Brent get closer than 
+                                      \code{aTol * abs(diff(brac))} to one of the extremes of the bracket, the optimization is
+                                      stop and restarted with an enlarged and shifted bracket. \code{aTol=0.05} should be > 0 and values > 0.1
+                                      don't quite make sense. By default \code{aTol=0.05}.}
+                  \item{\code{redWd} = parameter which determines when the bracket will be reduced.
+                                       If \code{redWd==10} then the bracket is halved if the nearest solution
+                                       falls within the central 10\% of the bracket's width. By default \code{redWd = 10}.}
+                  \item{\code{b} = offset parameter used by the mgcv::gauslss, which we estimate to initialize the quantile
+                                   fit (when a variance model is used). By default \code{b=0}.}
+                  \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
+}}
+
 \item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
 }
@@ -46,8 +73,9 @@ A list with entries: \itemize{
 }
 }
 \description{
-The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
-             based on boostrapping. Here the loss function is minimized, for each quantile, using a Brent search.
+The learning rate (sigma) of the Gibbs posterior is tuned either by calibrating the credible intervals for the fitted
+             curve, or by minimizing the pinball loss on out-of-sample data. This is done by bootrapping or by k-fold cross-validation. 
+             Here the loss function is minimized, for each quantile, using a Brent search.
 }
 \examples{
 library(qgam); library(MASS)

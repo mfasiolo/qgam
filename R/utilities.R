@@ -149,7 +149,7 @@ checkLearn <- function(cal)
     nc <- ncol(cal$edf)
     matplot(cal$edf[ , 1], cal$edf[ , 2:nc], type = 'b', ylab = "Penalized EDF", xlab = expression("log(" * sigma * ")"), 
             pch = 1:nc, col = 1:nc)
-    legend("bottomleft", colnames(cal$edf)[2:nc], pch = 1:nc, col = 1:nc)
+    legend("topright", colnames(cal$edf)[2:nc], pch = 1:nc, col = 1:nc, bg="transparent")
     rug(sig[cal$convProb], side = 3, col = 2, lwd = 2)
   }
   

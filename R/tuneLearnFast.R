@@ -1,8 +1,9 @@
 ##########################
 #' Fast learning rate calibration for the Gibbs posterior
 #' 
-#' @description The learning rate (sigma) of the Gibbs posterior is tuned using a calibration approach,
-#'              based on boostrapping. Here the loss function is minimized, for each quantile, using a Brent search.
+#' @description The learning rate (sigma) of the Gibbs posterior is tuned either by calibrating the credible intervals for the fitted
+#'              curve, or by minimizing the pinball loss on out-of-sample data. This is done by bootrapping or by k-fold cross-validation. 
+#'              Here the loss function is minimized, for each quantile, using a Brent search.
 #' 
 #' @param form A GAM formula, or a list of formulae. See ?mgcv::gam details.
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
@@ -19,17 +20,24 @@
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
-#'                   \item{\code{K} = number of boostrap datasets used for calibration. By default \code{K=50}.}
+#'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
+#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+#'                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
+#'                                       data.}
+#'                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
+#'                                      cross-validation. The second option can be used only if \code{ctrl$loss=="pin"}.}
+#'                   \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
+#'                                    number of folds. By default \code{K=50}.}
 #'                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
 #'                                       By default \code{init=NULL} and the optimization is initialized by other means.}
-#'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=c(0.5, 2)}, so the initial 
-#'                                       search range is \code{(init - 0.5, init + 2)}.}
+#'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=log(c(0.5, 2))}, so the initial 
+#'                                       search range is \code{(init - log(0.5), init + log(2))}.}
 #'                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
 #'                                      See \code{?optimize} for details.}
 #'                   \item{\code{aTol} = Brent search parameter. If the solution to a Brent get closer than 
 #'                                       \code{aTol * abs(diff(brac))} to one of the extremes of the bracket, the optimization is
 #'                                       stop and restarted with an enlarged and shifted bracket. \code{aTol=0.05} should be > 0 and values > 0.1
-#'                                       don't quite make sense. By default \code{aTol=0.05}.
+#'                                       don't quite make sense. By default \code{aTol=0.05}.}
 #'                   \item{\code{redWd} = parameter which determines when the bracket will be reduced.
 #'                                        If \code{redWd==10} then the bracket is halved if the nearest solution
 #'                                        falls within the central 10\% of the bracket's width. By default \code{redWd = 10}.}
@@ -115,7 +123,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }
   
   # Setting up control parameter
-  ctrl <- list( "init" = NULL,
+  ctrl <- list( "loss" = "cal", 
+                "sam" = "boot", 
+                "init" = NULL,
                 "brac" = log( c(1/2, 2) ), 
                 "K" = 50,
                 "redWd" = 10,
@@ -129,14 +139,22 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
   
+  if( !(ctrl$loss%in%c("cal", "pin")) ) stop("control$loss should be either \"cal\" or \"pin\" ")
+  if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
+  if( (ctrl$loss=="cal") && (ctrl$sam=="kfold")  ) stop("You can't use control$sam == \"kfold\" when ctrl$loss==\"cal\" ")
+  
   tol <- ctrl[["tol"]]
   brac <- ctrl[["brac"]]
   
   # Sanity check
   if( tol > 0.1 * abs(diff(brac)) ) stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
   
-  # Create indexes of K boostrap dataset
-  bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  if( ctrl$sam == "boot" ){ # Create indexes of K boostrap dataset OR...
+    bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  } else { # ... OR for K training sets for CV 
+    tmp <- sample(rep(1:ctrl[["K"]], length.out = n), n, replace = FALSE)
+    bootInd <- lapply(1:ctrl[["K"]], function(ii) which(tmp != ii)) 
+  }
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
@@ -173,22 +191,30 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Create a gam object for each bootstrap sample
   bObj <- lapply(bootInd, function(.ind){
     out <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
-                                 "data" = data[.ind, ], "sp" = gausFit$sp, "fit" = FALSE), argGam))
-    # Save boostrap indexes to be used later 
+                                 "data" = droplevels(data[.ind, ]), "sp" = gausFit$sp, "fit" = FALSE), argGam))
+    # Save boostrap indexes and out of sample responses, to be used later 
     out$bootInd <- .ind
+    out$outY <- mObj$y[ -.ind ]
     return( out )
   })
   
-  # Create prediction design matrices for each bootstrap sample
+  # Create prediction design matrices for each bootstrap sample or CV fold
   pMat <- lapply(bObj, function(.obj){
+
+    if( ctrl$loss == "cal" ){ # The data to be predicted is the full data if we use calibration OR ...
+      odat <- data 
+    } else {  # ... OR the out-of-sample data if we minimize pinball loss
+      odat <- data[-(.obj$bootInd), ]  
+    }
+    
     class( .obj ) <- c("gam", "glm", "lm") 
-    .obj$coefficients <- rep(0, ncol(.obj$X)) # Needed to fool predict
-    out <- predict.gam(.obj, newdata = data, type = "lpmatrix")
+    .obj$coefficients <- rep(0, ncol(.obj$X)) # Needed to fool predict.gam
+    out <- predict.gam(.obj, newdata = odat, type = "lpmatrix")
     
     # Calibration uses the linear predictor for the quantile location, we discard the rest 
     lpi <- attr(gausFit$formula, "lpi")
     if( !is.null(lpi) ){  
-      out <- out[ , lpi[[1]]] #"lpi" attribute lost here, re-inserted in next line 
+      out <- out[ , lpi[[1]]] # "lpi" attribute lost here, re-inserted in next line 
       attr(out, "lpi") <- lpi 
     }
     
@@ -236,8 +262,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
       srange <- isig + ef * brac
       
       # Estimate log(sigma) using brent methods with current bracket (srange)
-      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err[oi], srange = srange, 
-                             gausFit = gausFit, varHat = varHat,
+      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, qu = qu[oi], err = err[oi], loss = ctrl$loss, 
+                             srange = srange, gausFit = gausFit, varHat = varHat,
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
                              control = ctrl, argGam = argGam)  
       
@@ -309,8 +335,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
 ##########################################################################
 ### Internal version, which works for a single quantile qu
 ########################################################################## 
-.tuneLearnFast <- function(mObj, bObj, pMat, qu, err, srange,
-                           gausFit, varHat,
+.tuneLearnFast <- function(mObj, bObj, pMat, qu, err, loss, 
+                           srange, gausFit, varHat,
                            multicore, cluster, ncores, paropts, 
                            control, argGam)
 {
@@ -326,7 +352,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Loss function to be minimized using Brent method
-  objFun <- function(lsig, mObj, bObj, initM, initB, pMat, qu, varHat, cluster)
+  objFun <- function(lsig, mObj, bObj, initM, initB, pMat, qu, loss, varHat, cluster)
   {
     nbo <- length( bObj )
     lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
@@ -346,13 +372,14 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
         }
       })
     
-    mMU <- as.matrix(mFit$fit)[ , 1]
     mSP <- mFit$sp
+    
+    mMU <- as.matrix(mFit$fit)[ , 1]
     
     initM <- list("start" = coef(mFit), "in.out" = list("sp" = mSP, "scale" = 1))
     
-    ## Function to be run in parallel (over boostrapped datasets)
-    # GLOBAL VARS: bObj, pMat, initB, mSP, mMU, lam, lsig, qu
+    ## Function to be run in parallel (over boostrapped datasets) 
+    # GLOBAL VARS: bObj, argGam, pMat, initB, mSP, mMU, lam, lsig, qu, loss
     .funToApply <- function(ind)
     {
       z <- init <- vector("list", length(ind))
@@ -383,9 +410,14 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
         
         # Calculating stardardized deviations from full data fit
         mu <- .pMat %*% betas
-        sdev <- sqrt(rowSums((.pMat %*% Vp) * .pMat)) # same as sqrt(diag(.pMat%*%Vp%*%t(.pMat))) but (WAY) faster
         
-        z[[kk]] <- (mu - mMU) / sdev
+        if( loss == "cal" ){ # Return stardardized deviations from fit on full data OR ...
+          sdev <- sqrt(rowSums((.pMat %*% Vp) * .pMat)) # same as sqrt(diag(.pMat%*%Vp%*%t(.pMat))) but (WAY) faster
+          z[[kk]] <- (mu - mMU) / sdev
+        } else { # ... out-of-sample observations minus their fitted values 
+          z[[kk]] <- .obj$outY - mu
+        }
+        
         init[[kk]] <- .init
       }
       
@@ -397,7 +429,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
     if( !is.null(cluster) ){
       nc <- length(cluster)
       environment(.funToApply) <- .GlobalEnv
-      clusterExport(cluster, c("initB", "mSP", "mMU", "lam", "lsig", "qu", "argGam"), envir = environment())
+      clusterExport(cluster, c("initB", "mSP", "mMU", "lam", "lsig", "qu", "loss", "argGam"), envir = environment())
     } else {
       nc <- 1
     }
@@ -422,11 +454,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
         invokeRestart("muffleWarning")
     })
     
-    loss <- .adTest( do.call("c", lapply(out, "[[", "z")) )
+    tmp <- do.call("c", lapply(out, "[[", "z"))
+    outLoss <- if( loss=="cal" ){ .adTest( tmp ) } else { .checkloss(tmp, 0, qu) }
     initB <- unlist(lapply(out, "[[", "init"), recursive=FALSE)
     
-    return( list("loss" = loss, "initM" = initM, "initB" = initB) )
-  }
+    return( list("outLoss" = outLoss, "initM" = initM, "initB" = initB) )
+  } ## END of .objFun()
   
   init <- list("initM" = initM, "initB" = vector("list", nbo))
   
@@ -434,7 +467,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # error is of another nature) we throw an error
   repeat{
     res <- tryCatch(.brent(brac=srange, f=objFun, mObj = mObj, bObj = bObj, init = init, 
-                           pMat = pMat, qu = qu, varHat = varHat, cluster = cluster, t = control$tol, aTol = control$aTol), 
+                           pMat = pMat, qu = qu, loss = loss, varHat = varHat, cluster = cluster, t = control$tol, aTol = control$aTol), 
                     error = function(e) e)
     
     if("error" %in% class(res)){
