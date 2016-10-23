@@ -233,8 +233,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   
   # Create gam object
   bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = bdat, 
-                                "sp" = mainFit[[1]]$sp, fit = FALSE), argGam))
-  
+                                "sp" = if(length(mainFit[[1]]$sp)){mainFit[[1]]$sp}else{NULL}, fit = FALSE), argGam))
+
   .z <- matrix(NA, nt, nrow(odat))
   for( ii in nt:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
   {   

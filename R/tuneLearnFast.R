@@ -191,7 +191,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Create a gam object for each bootstrap sample
   bObj <- lapply(bootInd, function(.ind){
     out <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
-                                 "data" = droplevels(data[.ind, ]), "sp" = gausFit$sp, "fit" = FALSE), argGam))
+                                 "data" = droplevels(data[.ind, ]), "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, 
+                                 "fit" = FALSE), argGam))
     # Save boostrap indexes and out of sample responses, to be used later 
     out$bootInd <- .ind
     out$outY <- mObj$y[ -.ind ]
