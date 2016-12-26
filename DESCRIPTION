@@ -13,7 +13,8 @@ References: Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016).
             Available at https://github.com/mfasiolo/qgam/draft_qgam.pdf.
 License: GPL (>=2)
 Depends:
-    mgcv (>= 1.8.12)
+    mgcv (>= 1.8.12), 
+    shiny
 Imports:
     plyr,
     doSNOW,

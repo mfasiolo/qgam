@@ -11,6 +11,8 @@
 #'          either a vector of two characters or a matrix with two columns.  
 #' @param X a dataframe containing the data used to obtain the conditional quantiles. By default it is NULL, in which
 #'          case predictions are made using the model matrix in \code{obj$model}.
+#' @param y vector of responses. Its i-th entry corresponds to the i-th row of X.  By default it is NULL, in which
+#'          case it is internally set to \code{obj$y}.
 #' @param nbin a vector of integers of length one (1D case) or two (2D case) indicating the number of bins to be used
 #'             in each direction. Used only if \code{bound==NULL}.
 #' @param bound in the 1D case it is a numeric vector whose increasing entries represent the bounds of each bin.
@@ -36,7 +38,7 @@
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @examples
 #' #######
-#' # Example 1: Bivariate additive model y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
+#' # Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #' #######
 #' library(qgam)
 #' set.seed(15560)
@@ -53,46 +55,53 @@
 #' fit <- qgam(y~1, qu = qu, err = 0.05, data = dataf)
 #' 
 #' # Look at what happens along x: clearly there is non linear pattern here
-#' cqcheck(obj = fit, v = c("x"), X = dataf) 
+#' cqcheck(obj = fit, v = c("x"), X = dataf, y = y) 
 #' 
 #' #### Add a smooth for x
 #' fit <- qgam(y~s(x), qu = qu, err = 0.05, data = dataf)
-#' cqcheck(obj = fit, v = c("x"), X = dataf) # Better!
+#' cqcheck(obj = fit, v = c("x"), X = dataf, y = y) # Better!
 #' 
 #' # Lets look across across x and z. As we move along z (x2 in the plot) 
 #' # the colour changes from green to red
-#' cqcheck(obj = fit, v = c("x", "z"), X = dataf, nbin = c(5, 5))
+#' cqcheck(obj = fit, v = c("x", "z"), X = dataf, y = y, nbin = c(5, 5))
 #' 
 #' # The effect look pretty linear
-#' cqcheck(obj = fit, v = c("z"), X = dataf, nbin = c(10))
+#' cqcheck(obj = fit, v = c("z"), X = dataf, y = y, nbin = c(10))
 #' 
 #' #### Lets add a linear effect for z 
 #' fit <- qgam(y~s(x)+z, qu = qu, err = 0.05, data = dataf)
 #' 
 #' # Looks better!
-#' cqcheck(obj = fit, v = c("z"), X = dataf)
+#' cqcheck(obj = fit, v = c("z"))
 #' 
 #' # Lets look across x and y again: green prevails on the top-left to bottom-right
 #' # diagonal, while the other diagonal is mainly red.
-#' cqcheck(obj = fit, v = c("x", "z"), X = dataf, nbin = c(5, 5))
+#' cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
 #' 
 #' ### Maybe adding an interaction would help?
 #' fit <- qgam(y~s(x)+z+I(x*z), qu = qu, err = 0.05, data = dataf)
 #' 
 #' # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
-#' cqcheck(obj = fit, v = c("x", "z"), X = dataf, nbin = c(5, 5))
+#' cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
 #' 
 #' @export cqcheck
 #'
 #'
-cqcheck <- function(obj, v, X = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05)
+cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05, scatter = FALSE)
 {
-  # Set up
-  if( is.null(X) ){ X <- obj$model }
-  y <- obj$y
-  mu <- predict(obj, new.data = X)
-  res <- (mu - y) > 0
+  #### Set up
+  if( is.null(X) ){ 
+    X <- obj$model
+    if( is.null(y) ){ y <- obj$y }
+  } else {
+    if( is.null(y) ){ stop("If you provide X you must provide also the corresponding vector of responses y") }
+  }
+  
   n <- nrow(X)
+  if( length(y)!=n ){ stop("length(y)!=nrow(X)") }
+   
+  mu <- predict(obj, newdata = X)
+  res <- (mu - y) > 0
   qu <- obj$family$getQu()
   
   ####### Setting up 1D and 2D cases
@@ -165,7 +174,7 @@ cqcheck <- function(obj, v, X = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05
     ub <- qbinom(lev/2, bsize, qu, lower.tail = FALSE) / bsize
     lb <- qbinom(lev/2, bsize, qu) / bsize
     
-    svpar <- par(no.readonly = TRUE)
+    #svpar <- par(no.readonly = TRUE) 
     par(mar = c(5.1, 4.6, 4.1, 2.1))
     tmp <- rep(bins/bsize, bsize)
     plot(sort(x1), tmp, ylim = range(ub, lb, tmp), type = 'l', col = "white", 
@@ -181,7 +190,7 @@ cqcheck <- function(obj, v, X = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05
              col = ifelse(prop < ub[ii] && prop > lb[ii], 1, 2))
       rug(x1[indx==ii], col = ifelse(ii%%2, 3, 4))
     }
-    par(svpar)
+    #par(svpar) # Warning: this causes problems with shiny
   } else { ################ ... TWO VARIABLES  
     
     if(length(x1) != n) stop("length(x1) != ncol(X)")
@@ -237,10 +246,8 @@ cqcheck <- function(obj, v, X = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05
     
     rug(x1, side = 1)
     rug(x2, side = 2)
-    points(x1, x2, pch = ".")
-    
+    if(scatter){ points(x1, x2, pch = ".") }
   }
   
   return(NULL)
-  
 }
