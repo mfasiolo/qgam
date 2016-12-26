@@ -37,7 +37,7 @@ Given an additive quantile model, fitted using \code{qgam}, \code{cqcheck2DI} pr
 }
 \details{
 This is an interactive version of the \code{cqcheck}, see \code{?cqcheck} for details. The main interactive
-         feature is that one can select an area by brushing, and the double-click to zoom in. In the 1D case the vertical 
+         feature is that one can select an area by brushing, and then double-click to zoom in. In the 1D case the vertical 
          part of the selected area is not use: we zoom only along the x axis. Double-clicking without brushing zooms out.
 }
 \examples{

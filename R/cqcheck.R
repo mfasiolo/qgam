@@ -19,6 +19,7 @@
 #'              In the 2D case a list of two vectors should be provided. \code{NULL} by default. 
 #' @param lev the significance levels used in the plots, this determines the width of the confidence 
 #'            intervals. Default is 0.05.
+#' @param scatter if TRUE a scatterplot is added (using the \code{points} function). FALSE by default.
 #' @return Simply produces a plot.
 #' @details Having fitted an additive model for, say, quantile \code{qu=0.4} one would expect that about 40% of the 
 #'          responses fall below the fitted quantile. This function allows to visually compare the empirical number
@@ -87,7 +88,7 @@
 #' @export cqcheck
 #'
 #'
-cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05, scatter = FALSE)
+cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05, scatter = FALSE, ...)
 {
   #### Set up
   if( is.null(X) ){ 
@@ -176,9 +177,9 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
     
     #svpar <- par(no.readonly = TRUE) 
     par(mar = c(5.1, 4.6, 4.1, 2.1))
+    x <- sort(x1)
     tmp <- rep(bins/bsize, bsize)
-    plot(sort(x1), tmp, ylim = range(ub, lb, tmp), type = 'l', col = "white", 
-         xlab = "x", ylab = expression(hat(P)(y<hat(mu))))
+    plot(x, tmp, ylim = range(ub, lb, tmp), type = 'l', col = "white", ylab = expression(hat(P)(y<hat(mu))), ...)
     abline(h = qu, lty = 2)
     for(ii in 1:nbin1){
       prop <- bins[ii]/bsize[ii]
@@ -221,7 +222,8 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
         }}}
     
     # Plot!
-    plot(x1, x2, pch = ".", col = "white", ylim = range(bound2), xlim = range(bound1), main = expression(hat(P)(y<hat(mu))))
+    plot(x1, x2, pch = ".", col = "white", ylim = range(bound2), xlim = range(bound1), 
+         main = expression(hat(P)(y<hat(mu))), ...)
     for(tmp in bound2){ segments(x0 = min(bound1), x1 = max(bound1), y0 = tmp, y1 = tmp) }
     for(tmp in bound1){ segments(y0 = min(bound2), y1 = max(bound2), x0 = tmp, x1 = tmp) }
     

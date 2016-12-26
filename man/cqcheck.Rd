@@ -5,7 +5,7 @@
 \title{Visually checking a fitted quantile model}
 \usage{
 cqcheck(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL,
-  lev = 0.05, scatter = FALSE)
+  lev = 0.05, scatter = FALSE, ...)
 }
 \arguments{
 \item{obj}{the output of a \code{qgam} call.}
@@ -29,6 +29,8 @@ In the 2D case a list of two vectors should be provided. \code{NULL} by default.
 
 \item{lev}{the significance levels used in the plots, this determines the width of the confidence 
 intervals. Default is 0.05.}
+
+\item{scatter}{if TRUE a scatterplot is added (using the \code{points} function). FALSE by default.}
 }
 \value{
 Simply produces a plot.
@@ -56,7 +58,7 @@ Having fitted an additive model for, say, quantile \code{qu=0.4} one would expec
 }
 \examples{
 #######
-# Example 1: Bivariate additive model y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
+# Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #######
 library(qgam)
 set.seed(15560)

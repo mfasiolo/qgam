@@ -93,6 +93,8 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   
   fit$calibr <- learn
   
+  class(fit) <- c("qgam", class(fit))
+  
   return( fit )
 }
 
