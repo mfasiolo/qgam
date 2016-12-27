@@ -4,7 +4,7 @@
 \alias{check.qgam}
 \title{Some diagnostics for a fitted qgam model}
 \usage{
-check.qgam(obj, nbin = 10, lev = 0.05, ...)
+\method{check}{qgam}(obj, nbin = 10, lev = 0.05, ...)
 }
 \arguments{
 \item{obj}{the output of a \code{qgam()} call.}
