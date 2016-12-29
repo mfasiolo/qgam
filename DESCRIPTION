@@ -10,7 +10,7 @@ Description: Fit smooth additive quantile regression models, mainly using a qgam
 Details: See Fasiolo et al. (2016).
 References: Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). 
             Fast calibrated additive quantile regression. 
-            Available at https://github.com/mfasiolo/qgam/draft_qgam.pdf.
+            Available at https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf.
 License: GPL (>=2)
 Depends:
     mgcv (>= 1.8.12), 
@@ -19,6 +19,8 @@ Imports:
     plyr,
     doSNOW,
     parallel
-Suggests: 
+Suggests:
+    knitr,
     MASS
+VignetteBuilder: knitr
 RoxygenNote: 5.0.1
