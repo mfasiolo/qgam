@@ -58,7 +58,7 @@
 #' }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
-#'             \url{https://github.com/mfasiolo/qgam/draft_qgam.pdf}.
+#'             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 #' @examples
 #' library(qgam); library(MASS)
 #' 
@@ -325,7 +325,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   names(sigs) <- qu
   
   out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store)
-  attr(out, "class") <- "tuneLearnFast"
+  attr(out, "class") <- "learnFast"
   
   # Close the cluster if it was opened inside this function
   if(multicore && clusterCreated) stopCluster(cluster)

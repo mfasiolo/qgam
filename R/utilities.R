@@ -10,10 +10,10 @@
   d <- y - mu
   
   l <- d * 0
-
+  
   l[d < 0] <- - tau*d[d<0]
   l[d > 0] <- - (tau-1)*d[d>0]
-
+  
   if( add ) l <- sum(l)
   
   return( l )
@@ -77,7 +77,7 @@
 qdo <- function(obj, qu, fun, ...){
   
   if( !(qu %in% names(obj[["fit"]])) ) stop("qu is not in obj[[\"qu\"]].")
-    
+  
   tmpObj <- obj[["fit"]][[ which(names(obj[["fit"]]) == qu) ]]
   
   tmpObj[["model"]] <- obj[["model"]]
@@ -91,110 +91,122 @@ qdo <- function(obj, qu, fun, ...){
 
 
 ##########################
-#' Visual checks for the output of \code{tuneLearnFast}
+#' Visual checks for the output of tuneLearn()
 #' 
-#' @description Provides so visual checks to verify whether the Brent optimizer used by \code{tuneLearnFast} worked correctly.
+#' @description Provides some visual plots showing how the calibration criterion and the effective degrees of 
+#'              freedom of each smooth component vary with the learning rate.  
 #'  
-#' @param cal The output of a call to \code{tuneLearnFast}. This is also contained in the \code{calibr} slot of the output of
-#'            a call to \code{mqgam}.
-#' @return It provides several plots. The top plot in first page shows the bracket used to estimate log(sigma) for each quantile.
-#'         The brackets are delimited by the crosses and the red dots are the estimates. If a dot falls very close to one of the crosses, 
-#'         that might indicate problems. The bottom plot shows, for each quantile, the value of parameter \code{err} used. Sometimes the algorithm
-#'         needs to increase \code{err} above its user-defined value to achieve convergence. Subsequent plots show, for each quantile, the value
-#'         of the loss function corresponding to each value of log(sigma) explored by Brent algorithm.
+#' @param obj the output of a call to \code{tuneLearn}.
+#' @return It produces several plots. 
+#' @details The first plot shows how the calibrations loss, which we are trying to minimize, varies with the 
+#'          log learning rate. This function should look quite smooth, if it doesn't then try to increase
+#'          \code{err} or \code{control$K} (the number of bootstrap samples) in the original call to 
+#'          \code{tuneLearn}. The second plot shows how the effective degrees of freedom of each smooth term
+#'          vary with log(sigma). Generally as log(sigma) increases the complexity of the fit decreases, hence
+#'          the slope is negative.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 #' @examples
-#' library(qgam); library(MASS)
-#' 
-#' quSeq <- c(0.4, 0.5, 0.6)
-#' set.seed(737)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
-#'              control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
-#' 
-#' checkLearn(fit$calibr)
-#' @export qdo
+#' library(qgam)
+#' set.seed(525)
+#' dat <- gamSim(1, n=200)
+#' b <- tuneLearn(lsig = seq(-0.5, 1, length.out = 10), 
+#'                y~s(x0)+s(x1)+s(x2)+s(x3), 
+#'                data=dat, qu = 0.5)
+#' check(b) 
+#' @export check.learn
 #'
-checkLearn <- function(cal)
+check.learn <- function(obj)
 {  
+  sig <- as.numeric( names( obj$loss ) )
   
-  if( class(cal) == "tuneLearnFast" )
+  # readline(prompt = "Press <Enter> to see the next plot...")
+  plot(sig, obj$loss, type = "b", ylab = "Calibration Loss", xlab = expression("log(" * sigma * ")"))
+  rug(sig[obj$convProb], side = 3, col = 2, lwd = 2)
+  
+  if( !is.null(obj$edf) )
   {
-    .checkLearnFast(cal)
-  } else
-  {
-    if( class(cal) == "tuneLearn" )
-    {
-      .checkLearn(cal)
-    } else {
-      stop("cal should be either of class \"tuneLearn\" or \"tuneLearnFast\"")
-    }
-  }
-  
-  return( invisible(NULL) )
-}
-
-#####
-# Internal dealing with output of tuneLearn()
-.checkLearn <- function(cal)
-{
-  sig <- as.numeric( names( cal$loss ) )
-  
-  readline(prompt = "Press <Enter> to see the next plot...")
-  plot(sig, cal$loss, type = "b", ylab = "Calibration Loss", xlab = expression("log(" * sigma * ")"))
-  rug(sig[cal$convProb], side = 3, col = 2, lwd = 2)
-  
-  if( !is.null(cal$edf) )
-  {
-    readline(prompt = "Press <Enter> to see the next plot...")
-    nc <- ncol(cal$edf)
-    matplot(cal$edf[ , 1], cal$edf[ , 2:nc], type = 'b', ylab = "Penalized EDF", xlab = expression("log(" * sigma * ")"), 
+    # readline(prompt = "Press <Enter> to see the next plot...")
+    nc <- ncol(obj$edf)
+    matplot(obj$edf[ , 1], obj$edf[ , 2:nc], type = 'b', ylab = "Penalized EDF", xlab = expression("log(" * sigma * ")"), 
             pch = 1:nc, col = 1:nc)
-    legend("topright", colnames(cal$edf)[2:nc], pch = 1:nc, col = 1:nc, bg="transparent")
-    rug(sig[cal$convProb], side = 3, col = 2, lwd = 2)
+    legend("topright", colnames(obj$edf)[2:nc], pch = 1:nc, col = 1:nc, bg="transparent")
+    rug(sig[obj$convProb], side = 3, col = 2, lwd = 2)
   }
   
   return( invisible(NULL) )
 }
 
-# Internal dealing with output of tuneLearnFast()
-.checkLearnFast <- function(cal)
-{
+##########################
+#' Visual checks for the output of tuneLearnFast()
+#' 
+#' @description Provides some visual checks to verify whether the Brent optimizer used by \code{tuneLearnFast()} worked correctly.
+#' @param cal the output of a call to \code{tuneLearnFast}. 
+#' @param sel integer vector determining which of the plots will be produced. For instance if \code{sel = c(1, 3)} only
+#'            the 1st and 3rd plots are showed. No entry of \code{sel} can be bigger than the number of quantiles considered
+#'            in the original \code{tuneLearnFast()} call. That is, if estimated the learning rate for \code{qu = c(0.1, 0.4)},
+#'            then \code{max(sel)} must be <= 3.
+#' @return It produces several plots. 
+#' @details The top plot in the first page shows the bracket used to estimate log(sigma) for each quantile.
+#'          The brackets are delimited by the crosses and the red dots are the estimates. If a dot falls very close to one of the crosses, 
+#'          that might indicate problems. The bottom plot shows, for each quantile, the value of parameter \code{err} used. Sometimes the algorithm
+#'          needs to increase \code{err} above its user-defined value to achieve convergence. Subsequent plots show, for each quantile, the value
+#'          of the loss function corresponding to each value of log(sigma) explored by Brent algorithm.
+#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+#' @examples
+#' library(qgam)
+#' set.seed(525)
+#' dat <- gamSim(1, n=200)
+#' b <- tuneLearnFast(y ~ s(x0)+s(x1)+s(x2)+s(x3), 
+#'                    data = dat, qu = c(0.4, 0.5), 
+#'                    control = list("tol" = 0.05)) # <- sloppy tolerance to speed-up calibration 
+#' check(b) 
+#' check(b, 3) # Produces only third plot
+#' @export check.learnFast
+#'
+check.learnFast <- function(cal, sel = NULL)
+{  
   est <- cal$store
   brac <- cal$ranges
   lsig <- cal$lsig
   errors <- cal$err
-  
   qu <- as.numeric(names(cal$lsig))
   nq <- length(qu)
+  sel <- if(is.null(sel)){ 1:(nq+1) } else { sort(sel) }
   
   oldPar <- par(no.readonly = TRUE)
-  layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), heights=c(2, 1))
-  par(mai = c(1, 1, 0.1, 0.1))
-  plot(qu, lsig, ylim = range(as.vector(brac)), xlim = range(qu)+c(-1e-5,+1e-5), col = 2, 
-       ylab = expression("Log(" * sigma * ")"), xlab = "Quantile")
-  points(qu, brac[ , 1], pch = 3)
-  points(qu, brac[ , 2], pch = 3)
-  points(qu, rowMeans(brac), pch = 3)
-  for(zz in 1:nq) segments(qu[zz], mean(brac[zz, ]) - abs(diff(brac[zz, ]))/4, 
-                           qu[zz], mean(brac[zz, ]) + abs(diff(brac[zz, ]))/4, col = 1)
-  plot(qu, errors, xlab = "Quantile")
-  
-  readline(prompt = "Press <Enter> to see the next plot...")
-  
-  par(oldPar)
-  
-  pDim <- min( ceiling(sqrt(nq)), 2 )
-  par(mfrow = c(pDim, pDim))
-  for( ii in 1:nq )
-  {
-    plot(sort(est[[ii]][1, ]), est[[ii]][2, order(est[[ii]][1, ])], 
-         main = substitute(Quantile == x, list(x = round(qu[ii], 3))), 
-         ylab = "loss", xlab = expression(log(sigma)), type = 'b')
-    abline(v = est[[ii]][1, which.min(est[[ii]][2, ])], col = 2)
-    
-    if(ii %% (pDim^2) == 0) readline(prompt = "Press <Enter> to see the next plot...")
+  if( 1%in%sel ){
+    layout(matrix(c(1,1,2,2), 2, 2, byrow = TRUE), heights=c(2, 1))
+    par(mai = c(1, 1, 0.1, 0.1))
+    plot(qu, lsig, ylim = range(as.vector(brac)), xlim = range(qu)+c(-1e-5,+1e-5), col = 2, 
+         ylab = expression("Log(" * sigma * ")"), xlab = "Quantile")
+    points(qu, brac[ , 1], pch = 3)
+    points(qu, brac[ , 2], pch = 3)
+    points(qu, rowMeans(brac), pch = 3)
+    for(zz in 1:nq) segments(qu[zz], mean(brac[zz, ]) - abs(diff(brac[zz, ]))/4, 
+                             qu[zz], mean(brac[zz, ]) + abs(diff(brac[zz, ]))/4, col = 1)
+    plot(qu, errors, xlab = "Quantile")
+    par(oldPar)
   }
   
+  if(any(sel > 1))
+  {
+    selQ <- sel[sel>1] - 1
+    # readline(prompt = "Press <Enter> to see the next plot...")
+    pDim <- min( ceiling(sqrt(length(selQ))), 2 )
+    par(mfrow = c(pDim, pDim))
+    for( ii in selQ )
+    {
+      plot(sort(est[[ii]][1, ]), est[[ii]][2, order(est[[ii]][1, ])], 
+           main = substitute(Quantile == x, list(x = round(qu[ii], 3))), 
+           ylab = "loss", xlab = expression(log(sigma)), type = 'b')
+      abline(v = est[[ii]][1, which.min(est[[ii]][2, ])], col = 2)
+      #if((ii %% (pDim^2) == 0) && (ii!=nq)) readline(prompt = "Press <Enter> to see the next plot...")
+    }
+  }
   par(oldPar)
   
   return( invisible(NULL) )

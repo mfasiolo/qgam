@@ -147,8 +147,7 @@ This looks much better.
 
 ## Application to the GEFCom2014 dataset
 
-Here we consider the dataset from the GEFCom2014 electricity load forecasting challenge. We firstly load and clean the
-data.
+Here we consider the dataset from the GEFCom2014 electricity load forecasting challenge. We firstly load and clean the data.
 
 ```R
 library(dplyr); library(magrittr);

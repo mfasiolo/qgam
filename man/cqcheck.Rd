@@ -72,7 +72,7 @@ names(dataf) <- c("y", "x", "z")
 
 #### Fit a constant model for median
 qu <- 0.5
-fit <- qgam(y~1, qu = qu, err = 0.05, data = dataf)
+fit <- qgam(y~1, qu = qu, data = dataf)
 
 # Look at what happens along x: clearly there is non linear pattern here
 cqcheck(obj = fit, v = c("x"), X = dataf, y = y) 
@@ -81,7 +81,7 @@ cqcheck(obj = fit, v = c("x"), X = dataf, y = y)
 fit <- qgam(y~s(x), qu = qu, err = 0.05, data = dataf)
 cqcheck(obj = fit, v = c("x"), X = dataf, y = y) # Better!
 
-# Lets look across across x and z. As we move along z (x2 in the plot) 
+# Lets look across x and z. As we move along z (x2 in the plot) 
 # the colour changes from green to red
 cqcheck(obj = fit, v = c("x", "z"), X = dataf, y = y, nbin = c(5, 5))
 
@@ -89,7 +89,7 @@ cqcheck(obj = fit, v = c("x", "z"), X = dataf, y = y, nbin = c(5, 5))
 cqcheck(obj = fit, v = c("z"), X = dataf, y = y, nbin = c(10))
 
 #### Lets add a linear effect for z 
-fit <- qgam(y~s(x)+z, qu = qu, err = 0.05, data = dataf)
+fit <- qgam(y~s(x)+z, qu = qu, data = dataf)
 
 # Looks better!
 cqcheck(obj = fit, v = c("z"))
@@ -99,7 +99,7 @@ cqcheck(obj = fit, v = c("z"))
 cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
 
 ### Maybe adding an interaction would help?
-fit <- qgam(y~s(x)+z+I(x*z), qu = qu, err = 0.05, data = dataf)
+fit <- qgam(y~s(x)+z+I(x*z), qu = qu, data = dataf)
 
 # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))

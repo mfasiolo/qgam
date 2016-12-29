@@ -74,9 +74,11 @@ check.qgam <- function(obj,
   ## now check k
   kchck <- .kcheck(obj)
   if (!is.null(kchck)) {
-    cat("Basis dimension (k) check: edf is close too k\' (maximum possible edf) \n")
+    cat("Basis dimension (k) check: if edf is close too k\' (maximum possible edf) \n")
     cat("it might be worth increasing k. \n\n")
     printCoefmat(kchck,digits=3);
   }
+  
+  return( invisible(NULL) )
   
 }
