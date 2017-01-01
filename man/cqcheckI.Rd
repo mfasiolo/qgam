@@ -41,7 +41,7 @@ This is an interactive version of the \code{cqcheck}, see \code{?cqcheck} for de
          part of the selected area is not use: we zoom only along the x axis. Double-clicking without brushing zooms out.
 }
 \examples{
-## Not run: 
+\dontrun{ 
 #######
 # Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #######
@@ -88,7 +88,7 @@ fit <- qgam(y~s(x)+z+I(x*z), qu = qu, err = 0.05, data = dataf)
 
 # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 cqcheckI(obj = fit, v = c("x", "z"))
-## End(Not run)
+}
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.

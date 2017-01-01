@@ -31,6 +31,8 @@ In the 2D case a list of two vectors should be provided. \code{NULL} by default.
 intervals. Default is 0.05.}
 
 \item{scatter}{if TRUE a scatterplot is added (using the \code{points} function). FALSE by default.}
+
+\item{...}{extra graphical parameters to be passed to \code{plot()}.}
 }
 \value{
 Simply produces a plot.

@@ -119,13 +119,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
 
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
-    fam <- "logF"
+    fam <- "elf"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     varHat <- gausFit$sig2
     initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
   } else {
-    fam <- "logFlss"
+    fam <- "elflss"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
     initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 

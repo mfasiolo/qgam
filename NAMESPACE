@@ -3,3 +3,15 @@ exportPattern("^[[:alpha:]]+")
 importFrom(plyr, "is.formula", "llply", "mlply")
 importFrom(doSNOW, "registerDoSNOW")
 importFrom(parallel, "makeCluster", "stopCluster", "detectCores", "clusterExport", "clusterEvalQ")
+
+importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom", "make.link", 
+                  "dlogis", "plogis")
+importFrom(grDevices, "rgb")
+
+import(mgcv)
+import(shiny)
+import(graphics)
+
+S3method("check", "qgam", "check.qgam")
+S3method("check", "learn", "check.learn")
+S3method("check", "learnFast", "check.learnFast")

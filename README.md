@@ -35,7 +35,7 @@ lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)
 `qgam` automatically calls `tuneLearnFast` to select the learning rate. We can check whether the optimization 
 succeded.
 ```R
-checkLearn(fit$calibr)
+check(fit$calibr)
 ```
 
 The second plot suggests so. Alternatively, we could have selected the learning rate by evaluating the loss function on a grid.
@@ -47,7 +47,7 @@ cal <- tuneLearn(accel~s(times, k=20, bs="ad"),
                  qu = 0.8,
                  lsig = seq(1, 3, length.out = 20)) #<- sequence of values for learning rate
                  
-checkLearn(cal)
+check(cal)
 ```
 
 
@@ -64,7 +64,6 @@ fit <- mqgam(accel~s(times, k=20, bs="ad"),
 To save memory `mqgam` does not return one `mgcv::gamObject` for each quantile, but it avoids storing some redundant data (such as several copies of the design matrix). The output of `mqgam` can be manipulated using the `qdo` function.
 
 ```R
-
 # Plot the data
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
 plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
@@ -79,7 +78,7 @@ for(iq in quSeq){
 qdo(fit, qu = 0.4, summary)
 
 # Check learning rate optimization
-checkLearn(fit$calibr)
+check(fit$calibr)
 ```
 
 ## Dealing with heteroscedasticity
@@ -145,44 +144,35 @@ lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
 This looks much better. 
 
 
-## Application to the GEFCom2014 dataset
+## Application to UK electricity load forecasting
 
-Here we consider the dataset from the GEFCom2014 electricity load forecasting challenge. We firstly load and clean the data.
+Here we consider a UK electricity demand dataset, taken from the national grid [website](https://www.nationalgrid.com). The dataset covers the period January 2011 to June 2016 and it contains the following variables:
+
+   - `NetDemand` net electricity demand between 11:30am and 12am.
+   - `wM` instantaneous temperature, averaged over several English cities.
+   - `wM_s95` exponential smooth of `wM`, that is `wM_s95[i] = a*wM[i] + (1-a)*wM_s95[i]` with `a=0.95`.
+   - `Posan` periodic index in `[0, 1]` indicating the position along the year.
+   - `Dow` factor variable indicating the day of the week.
+   - `Trend` progressive counter, useful for defining the long term trend.
+   - `NetDemand.48` lagged version of `NetDemand`, that is `NetDemand.48[i] = NetDemand[i-2]`.
+   - `Holy` binary variable indicating holidays.
+   - `Year` and `Date` should obvious, and partially redundant.
+   
+See [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf) for more details. This is how the demand over the period looks like:
 
 ```R
-library(dplyr); library(magrittr);
-
-data("GEFCom2014")
+data("UKload")
 EdfColors <- c("#FE5815", "#FFA02F", "#C4D600", "#509E2F", "#005BBB", "#001A70")
 
-# utility function : Farheinet to Celsius
-convertFtoC <- function(x) (x - 32)/1.8
-# keeping only needed variables
-Data %<>% dplyr::select(Annee, LOAD, wM, TL95wM, Posan, Tendance, JourSemaine, Heure)
-# TL95wM : Exponential smoothing of the temperature wM, k = 0.95
-# wM     : Average Temperature of weather stations 6, 10, 22, 25
-Data %<>% mutate(TL95wM = convertFtoC(TL95wM))
-Data %<>% mutate(Instant = Heure)
-Data %<>% mutate(wM = convertFtoC(wM))
-# Only one hour == 12
-data_12 <- Data %>% filter(Heure == 12)
-
-# Remove the outliers:
-data_12 %<>% mutate(old.Load = LOAD)
-plot(data_12$LOAD, type = 'l',
-     xlab = 'Nb of observations',
-     ylab = 'Load')
-points(x = order(data_12$LOAD)[1:3],
-       y = data_12$LOAD[order(data_12$LOAD)[1:3]], col = 'red', pch = 18)
-# We leave these points behind
-data_12 %<>% slice( -order(data_12$LOAD)[1:3] )
+tmpx <- seq(UKload$Year[1], tail(UKload$Year, 1), length.out = nrow(UKload)) 
+plot(tmpx, UKload$NetDemand, type = 'l', xlab = 'Year', ylab = 'Load')
 ```
 
 Now we tune the learning rate on a grid, on 4 cores. We are interested the median.
 ```R
 qu <- 0.5
-form <- LOAD ~ s(wM, k = 30) + s(TL95wM, k = 30) + s(Posan, k = 40, bs = 'cc') + 
-               s(Tendance, k = 4) + as.factor(JourSemaine)
+form <- NetDemand~s(wM,k=20,bs='cr') + s(wM_s95,k=20,bs='cr') + 
+        s(Posan,bs='ad',k=30,xt=list("bs"="cc")) + Dow + s(Trend,k=4) + NetDemand.48 + Holy
 
 library(parallel)
 cl <- makeCluster(4)
@@ -190,37 +180,34 @@ clusterEvalQ(cl, {library(RhpcBLASctl); blas_set_num_threads(1)})
 
 tic <- proc.time()
 set.seed(41241)
-sigSeq <- seq(0.5, 2, length.out = 16)
-closs <- tuneLearn(form = form, data = data_12, err = 0.05,
+sigSeq <- seq(4, 8, length.out = 16)
+closs <- tuneLearn(form = form, data = UKload, 
                    lsig = sigSeq, qu = qu, control = list("K" = 20), 
-                   multicore = TRUE, ncores = 4, cluster = cl)
+                   multicore = TRUE, ncores = 4)
 proc.time() - tic
 stopCluster(cl)
 
-checkLearn(closs)
+check(closs)
 ```
 
 Let's fit the model with the learning rate corresponding to the lowest loss and let's look at the resulting smooth effects.
 ```R
 lsig <- closs$lsig
-
-fit <- qgam(form = form, data = data_12, err = 0.05, lsig = lsig, qu = qu)
-
+fit <- qgam(form = form, data = UKload, err = 0.05, lsig = lsig, qu = qu)
 plot(fit, scale = F, page = 1)
 ```
 
 We can fit multiple quantiles using `mqgam`. Here we use pre-computed a learning-rate for each quantile, in order to save time.
 ```R
 qus <- seq(0.05, 0.95, length.out = 20)
-lsig <- c(0.24, 0.52, 0.66, 0.77, 0.87, 0.94, 0.99, 1.02, 1.03, 
-          1.04, 1.05, 1.06, 1.07, 1.07, 1.08, 1.09, 1.10, 1.07, 0.97, 0.82)
+lsig <- rep(6, 20)
 
-fitM <- mqgam(form = form, data = data_12, err = 0.1, lsig = lsig, qu = qus)
+fitM <- mqgam(form = form, data = UKload, err = 0.1, lsig = lsig, qu = qus)
 
 # Predict each quantile curve and plot
 pmat <- list()
 for(ii in 1:length(qus)){
-  pmat[[ii]] <- qdo(fitM, qus[ii], predict)[1:50]
+  pmat[[ii]] <- qdo(fitM, qus[ii], predict)[1:100]
   #lines(pmat[[ii]], col = 2)
 }
 pmat <- do.call("rbind", pmat)
@@ -229,7 +216,7 @@ matplot(t(pmat),
         type = 'l', lty = 1, 
         col = colorRampPalette(EdfColors[1:4])(20),
         ylab = 'Load', xlab = "Day",)
-points(data_12$LOAD[1:50])
+points(UKload$NetDemand[1:100])
 ```
 
 Let's look at how the conditional distribution of the response looks like on different days. 
@@ -237,21 +224,23 @@ Let's look at how the conditional distribution of the response looks like on dif
 pmat <- t(t(pmat) - pmat[10, ])
 pmat <- apply(pmat, 2, sort)
 
+subDat <- pmat[ , 51:100]
 par(mfrow = c(1, 2))
 for(ii in 1:50)
 {
-qpos <- pmat[ , ii]
+qpos <- subDat[ , ii]
 
-plot(qpos, qus, type = 'b', ylim = c(0, 1), "xlab" = "(centered) LOAD", xaxt="n", xlim = range(pmat), ylab = "F(LOAD)")
-axis(1, round(seq(min(pmat), max(pmat), length.out = 5), 1))
+plot(qpos, qus, type = 'b', ylim = c(0, 1), "xlab" = "(centered) LOAD", 
+     xaxt="n", xlim = range(subDat), ylab = "F(LOAD)")
+axis(1, round(seq(min(subDat), max(subDat), length.out = 5), 1))
 abline(h = 1, lty = 2)
 abline(h = 0, lty = 2)
 
 n <- length(qpos)
 tmp <- diff(qus) / diff(qpos)
 plot( rep(qpos, each = 2), c(0, rep(tmp, each = 2), 0), "xlab" = "(centered) LOAD", ylab = "f(LOAD)", 
-       xaxt="n", xlim = range(pmat), type = 'l')
-axis(1, round(seq(min(pmat), max(pmat), length.out = 5), 1))
+       xaxt="n", xlim = range(subDat), type = 'l')
+axis(1, round(seq(min(subDat), max(subDat), length.out = 5), 1))
 polygon(x = rep(qpos, each = 2),
         y = c(0, rep(tmp, each = 2), 0),
         col = "gray",border="black")

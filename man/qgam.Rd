@@ -73,7 +73,30 @@ set.seed(2)
 dat <- gamSim(1,n=400,dist="normal",scale=2)
 
 fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
-plot(fit, scale = F, pages = 1)                          
+plot(fit, scale = FALSE, pages = 1)      
+
+######
+# Heteroscedastic example
+######
+set.seed(651)
+n <- 5000
+x <- seq(-4, 3, length.out = n)
+X <- cbind(1, x, x^2)
+beta <- c(0, 1, 1)
+sigma =  1.2 + sin(2*x)
+f <- drop(X \%*\% beta)
+dat <- f + rnorm(n, 0, sigma)
+dataf <- data.frame(cbind(dat, x))
+names(dataf) <- c("y", "x")
+
+fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
+            data = dataf, qu = 0.95, lsig = -1.16) # <- sloppy tolerance to speed up calibration 
+
+plot(x, dat, col = "grey", ylab = "y")
+tmp <- predict(fit, se = TRUE)
+lines(x, tmp$fit[ , 1])
+lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
+lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.

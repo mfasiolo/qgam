@@ -158,11 +158,11 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
-    fam <- "logF"                      
+    fam <- "elf"                      
     if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam)) } else { gausFit <- ctrl$gausFit }
     varHat <- gausFit$sig2
   } else {
-    fam <- "logFlss"                 
+    fam <- "elflss"                 
     if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) } else { gausFit <- ctrl$gausFit }
     varHat <- 1/gausFit$fit[ , 2]^2
   }

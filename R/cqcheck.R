@@ -20,6 +20,7 @@
 #' @param lev the significance levels used in the plots, this determines the width of the confidence 
 #'            intervals. Default is 0.05.
 #' @param scatter if TRUE a scatterplot is added (using the \code{points} function). FALSE by default.
+#' @param ... extra graphical parameters to be passed to \code{plot()}.
 #' @return Simply produces a plot.
 #' @details Having fitted an additive model for, say, quantile \code{qu=0.4} one would expect that about 40% of the 
 #'          responses fall below the fitted quantile. This function allows to visually compare the empirical number

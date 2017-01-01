@@ -1,6 +1,42 @@
+##########################
+#' Extended log-F model with fixed scale
+#' 
+#' @description The \code{elf} family implements the Extended log-F density of Fasiolo et al. (2017) and it is supposed
+#'              to work in conjuction with the extended GAM methods of Wood et al. (2017), implemented by
+#'              \code{mgcv}. It differs from the \code{elflss} family, because here the scale of the density (sigma, aka the learning rate) is a single scalar, 
+#'              while in \code{elflss} it can depend on the covariates. At the moment the family is mainly intended for internal use, 
+#'              use the \code{qgam} function to fit quantile GAMs based on ELF.
+#'  
+#' @param theta a scalar representing the log-scale log(sigma). 
+#' @param link the link function between the linear predictor and the quantile location.
+#' @param qu parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.
+#' @param lam parameter lambda of the ELF density, it must be positive. See Fasiolo et al. (2017) for details.
+#' @return An object inheriting from mgcv's class \code{extended.family}.
+#' @details This function is meant for internal use only.
+#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com> and Simon N. Wood. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+#'             
+#'             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
+#'             general smooth models. Journal of the American Statistical Association.
+#' @examples
+#' library(qgam)
+#' set.seed(2)
+#' dat <- gamSim(1,n=400,dist="normal",scale=2)
+#' 
+#' # Fit median using elf directly: FAST BUT NOT RECOMMENDED
+#' fit <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), 
+#'            family = elf(theta = 0, lam = 0.5, qu = 0.5), data = dat)
+#' plot(fit, scale = FALSE, pages = 1)     
+#' 
+#' # Using qgam: RECOMMENDED
+#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
+#' plot(fit, scale = FALSE, pages = 1)      
+#'
+#' @export elf
+#'
 ## (c) Simon N. Wood & Matteo Fasiolo
-## 2013-2015. Released under GPL2.
-
+## 2013-2017. Released under GPL2.
 ## extended families for mgcv, standard components. 
 ## family - name of family character string
 ## link - name of link character string
@@ -34,16 +70,8 @@
 ## predict - optional function for predicting from model, called by predict.gam.
 ## family$data - optional list storing any family specific data for use, e.g. in predict
 ##               function.
-
-#######################
-## Modified log-F density
-#######################
-
-logF <- function (theta = NULL, link = "identity", qu, lam) { 
-  ## Extended family object for modified log-F, to allow direct estimation of theta
-  ## as part of REML optimization. Currently the template for extended family objects.
-  ## length(theta)=1; log theta supplied. 
-  ## Written by Matteo Fasiolo.
+elf <- function (theta = NULL, link = "identity", qu, lam) { 
+  
   # Some checks
   if( !is.na(qu) && (findInterval(qu, c(0, 1) )!=1) ) stop("qu should be in (0, 1)")
   
@@ -71,7 +99,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     
   } else iniTheta <- 0 ## inital log theta value
   
-  env <- new.env(parent = environment(logF)) #.GlobalEnv) ##########!!!!!!!!!!!!!!!!~########################
+  env <- new.env(parent = environment(elf)) #.GlobalEnv) ##########!!!!!!!!!!!!!!!!~########################
   
   assign(".Theta", iniTheta, envir = env)
   getTheta <- function(trans=FALSE) if (trans) exp(get(".Theta")) else get(".Theta")
@@ -198,7 +226,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
   
   #postproc <- expression({  ####### XXX ??? #######
   #  object$family$family <- 
-  #    paste("logF(",round(object$family$getTheta(TRUE),3),")",sep="")
+  #    paste("elf(",round(object$family$getTheta(TRUE),3),")",sep="")
   #})
   
   #   rd <- function(mu,wt,scale) {  ####### XXX TODO #######
@@ -217,7 +245,7 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
     environment(putTheta) <- environment(putLam) <- environment(getLam) <-
     environment(putQu) <- environment(getQu) <- env
   
-  structure(list(family = "logF", link = linktemp, linkfun = stats$linkfun,
+  structure(list(family = "elf", link = linktemp, linkfun = stats$linkfun,
                  linkinv = stats$linkinv, dev.resids = dev.resids,Dd=Dd,
                  #variance=variance,
                  aic = aic, mu.eta = stats$mu.eta, initialize = initialize,
@@ -231,4 +259,4 @@ logF <- function (theta = NULL, link = "identity", qu, lam) {
                  #, rd=rd,qf=qf
   ),
   class = c("extended.family","family"))
-} ## logF
+} ## elf

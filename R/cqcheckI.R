@@ -23,7 +23,7 @@
 #'          part of the selected area is not use: we zoom only along the x axis. Double-clicking without brushing zooms out. 
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @examples
-#' ## Not run: 
+#' \dontrun{ 
 #' #######
 #' # Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #' #######
@@ -70,7 +70,7 @@
 #' 
 #' # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 #' cqcheckI(obj = fit, v = c("x", "z"))
-#' ## End(Not run)
+#' }
 #' @export cqcheckI
 #'
 cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", height = "680px")
@@ -120,7 +120,7 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
   } 
   
   out <- if( is.null(x2) ){ # One dimensional OR ...
-    .cqcheck1DI(.obj = fit, .x1 = x1, .X = X, .y = y, .width = width, .height = height)
+    .cqcheck1DI(.obj = obj, .x1 = x1, .X = X, .y = y, .width = width, .height = height)
   } else { # ... two dimensional case
     .cqcheck2DI(.obj = obj, .x1 = x1, .x2 = x2, .X = X, .y = y, .width = width, .height = height)
   }

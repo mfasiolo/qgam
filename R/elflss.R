@@ -1,6 +1,63 @@
+##########################
+#' Extended log-F model with variable scale
+#' 
+#' @description The \code{elflss} family implements the Extended log-F density of Fasiolo et al. (2017) and it is supposed
+#'              to work in conjuction with the general GAM fitting methods of Wood et al. (2017), implemented by
+#'              \code{mgcv}. It differs from the \code{elf} family, because here the scale of the density 
+#'              (sigma, aka the learning rate) can depend of the covariates, while in 
+#'              while in \code{elf} it is a single scalar. At the moment the family is mainly intended for internal use, 
+#'              use the \code{qgam} function to fit quantile GAMs based on ELF.
+#'  
+#' @param link vector of two characters indicating the link function for the quantile location and for the log-scale.
+#' @param qu parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.
+#' @param lam parameter lambda of the ELF density, it must be positive. See Fasiolo et al. (2017) for details.
+#' @param theta a scalar representing the intercept of the model for the log-scale log(sigma). 
+#' @param remInter if TRUE the intercept of the log-scale model is removed. 
+#' @return An object inheriting from mgcv's class \code{general.family}.
+#' @details This function is meant for internal use only.
+#' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com> and Simon N. Wood. 
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+#'             
+#'             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
+#'             general smooth models. Journal of the American Statistical Association.
+#' @examples
+#' set.seed(651)
+#' n <- 5000
+#' x <- seq(-4, 3, length.out = n)
+#' X <- cbind(1, x, x^2)
+#' beta <- c(0, 1, 1)
+#' sigma =  1.2 + sin(2*x)
+#' f <- drop(X %*% beta)
+#' dat <- f + rnorm(n, 0, sigma)
+#' dataf <- data.frame(cbind(dat, x))
+#' names(dataf) <- c("y", "x")
+#'
+#' # Fit median using elf directly: NOT RECOMMENDED
+#' fit <- gam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
+#'            family = elflss(theta = -1.16, lam = 0.5, qu = 0.5), 
+#'            data = dataf)
+#'            
+#' plot(x, dat, col = "grey", ylab = "y")
+#' tmp <- predict(fit, se = TRUE)
+#' lines(x, tmp$fit[ , 1])
+#' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
+#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)     
+#' 
+#' # Use qgam: RECOMMENDED
+#' fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
+#'             data = dataf, qu = 0.95, 
+#'             lsig = -1.16) # <- sloppy tolerance to speed up calibration 
+#' 
+#' plot(x, dat, col = "grey", ylab = "y")
+#' tmp <- predict(fit, se = TRUE)
+#' lines(x, tmp$fit[ , 1])
+#' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
+#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
+#' @export elflss
+#'
 ## (c) Simon N. Wood & Matteo Fasiolo
-## 2013-2015. Released under GPL2.
-
+## 2013-2017. Released under GPL2.
 ## extended families for mgcv, standard components. 
 ## family - name of family character string
 ## link - name of link character string
@@ -34,17 +91,13 @@
 ## predict - optional function for predicting from model, called by predict.gam.
 ## family$data - optional list storing any family specific data for use, e.g. in predict
 ##               function.
-
-#######################
-## Modified log-F density
-#######################
-
-logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TRUE) 
+elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TRUE) 
 { 
   # Some checks
   if( !remInter ){
     if( theta != 0 ){ stop("remInter == FALSE, but theta != 0") }
-    theta <- 0 }
+    theta <- 0 
+  }
   
   if( !is.na(qu) && (findInterval(qu, c(0, 1) )!=1) ) stop("qu should be in (0, 1)")
   
@@ -53,13 +106,13 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
   ## length(theta)=2; log theta supplied. 
   ## Written by Matteo Fasiolo.
   ## first deal with links and their derivatives...
-  if (length(link)!=2) stop("logFlss requires 2 links specified as character strings")
+  if (length(link)!=2) stop("elflss requires 2 links specified as character strings")
   okLinks <- list(c("inverse", "log", "identity", "sqrt"), "log")
   stats <- list()
   param.names <- c("mu", "sigma")
   for (i in 1:2) {
     if (link[[i]] %in% okLinks[[i]]) stats[[i]] <- make.link(link[[i]]) else 
-      stop(link[[i]]," link not available for ", param.names[i]," parameter of logFlss")
+      stop(link[[i]]," link not available for ", param.names[i]," parameter of elflss")
     fam <- structure(list(link=link[[i]],canonical="none",linkfun=stats[[i]]$linkfun,
                           mu.eta=stats[[i]]$mu.eta),
                      class="family")
@@ -279,7 +332,7 @@ logFlss <- function(link = list("identity", "log"), qu, lam, theta, remInter = T
   environment(putTheta) <- environment(getTheta) <- environment(putLam) <- environment(getLam) <- 
     environment(ll) <- environment(residuals) <- environment(putQu) <- environment(getQu) <- env
   
-  structure(list(family="logFlss",ll=ll,link=paste(link),nlp=2,
+  structure(list(family="elflss",ll=ll,link=paste(link),nlp=2,
                  tri = mgcv:::trind.generator(2), ## symmetric indices for accessing derivative arrays
                  initialize=initialize,
                  drop.intercept = c(FALSE, remInter),
