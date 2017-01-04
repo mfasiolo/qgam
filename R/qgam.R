@@ -71,7 +71,7 @@
 #' names(dataf) <- c("y", "x")
 #' 
 #' fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-#'             data = dataf, qu = 0.95, lsig = -1.16) # <- sloppy tolerance to speed up calibration 
+#'             data = dataf, qu = 0.95, lsig = -1.16)
 #' 
 #' plot(x, dat, col = "grey", ylab = "y")
 #' tmp <- predict(fit, se = TRUE)

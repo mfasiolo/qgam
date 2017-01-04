@@ -102,7 +102,7 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
   n <- nrow(X)
   if( length(y)!=n ){ stop("length(y)!=nrow(X)") }
    
-  mu <- predict(obj, newdata = X)
+  mu <- as.matrix(predict(obj, newdata = X))[ , 1]
   res <- (mu - y) > 0
   qu <- obj$family$getQu()
   

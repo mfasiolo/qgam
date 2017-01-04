@@ -31,8 +31,9 @@ check.qgam <- function(obj,
                        ...)
   ## takes a fitted gam object and produces some standard diagnostic plots
 {
+  
   svpar <- par(no.readonly = TRUE) 
-  cqcheck(obj = obj, v = obj$fitted.values, nbin = nbin, xlab = "Fitted values", ...)
+  cqcheck(obj = obj, v = as.matrix(obj$fitted.values)[ , 1], nbin = nbin, xlab = "Fitted values", ...)
   par(svpar) 
   
   ## now summarize convergence information
