@@ -40,7 +40,7 @@ set.seed(6436)
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
             qu = 0.8, 
-            control = list("tol" = 0.05)) # <- sloppy tolerance to speed-up calibration 
+            control = list("tol" = 0.02)) # <- sloppy tolerance to speed-up calibration 
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
