@@ -99,12 +99,7 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
     if( is.null(y) ){ stop("If you provide X you must provide also the corresponding vector of responses y") }
   }
   
-  n <- nrow(X)
-  if( length(y)!=n ){ stop("length(y)!=nrow(X)") }
-   
-  mu <- as.matrix(predict(obj, newdata = X))[ , 1]
-  res <- (mu - y) > 0
-  qu <- obj$family$getQu()
+  if( length(y)!=nrow(X) ){ stop("length(y)!=nrow(X)") }
   
   ####### Setting up 1D and 2D cases
   if( is.character(v) ){ # Name(s) of variable(s) in X provided OR ...
@@ -137,6 +132,19 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
       }
     }
   } 
+  
+  # Discard NAs from X, y, x1 and x2. We don't do this on v, hence if v is numeric it is dangerous to use it from here onwards
+  good <- complete.cases(X, y, x1, x2)
+  y <- y[ good ]
+  X <- X[good, , drop = FALSE]
+  x1 <- x1[ good ]
+  x2 <- x2[ good ]
+  
+  # Calculating proportion of observation falling below estimate quantile curve
+  n <- nrow(X)
+  mu <- as.matrix(predict(obj, newdata = X))[ , 1]
+  res <- (mu - y) > 0
+  qu <- obj$family$getQu()
   
   # Now branching for main computation
   if( is.null(x2) ) ################ ONE VARIABLE

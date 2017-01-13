@@ -84,8 +84,7 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
     if( is.null(y) ){ stop("If you provide X you must provide also the corresponding vector of responses y") }
   }
   
-  n <- nrow(X)
-  if( length(y)!=n ){ stop("length(y)!=nrow(X)") }
+  if( length(y)!=nrow(X) ){ stop("length(y)!=nrow(X)") }
   
   ####### Setting up 1D and 2D cases
   if( is.character(v) ){ # Name(s) of variable(s) in X provided OR ...
