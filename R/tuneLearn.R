@@ -223,7 +223,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   n <- length( bindex )
   
   # Creating bootstrapped dataset. Redundant levels of factor variable are dropped
-  bdat <- droplevels( data[bindex, ] )
+  bdat <- droplevels( data[bindex, , drop = FALSE] )
   
   if( loss == "cal" ){ # Testing data: full data if we calibrate OR ...
     odat <- data 
