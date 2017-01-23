@@ -4,20 +4,23 @@
 \alias{qdo}
 \title{Manipulating the output of \code{mqgam}}
 \usage{
-qdo(obj, qu, fun, ...)
+qdo(obj, qu = NULL, fun = I, ...)
 }
 \arguments{
-\item{obj}{A list which is the output of a \code{mqgam} call.}
+\item{obj}{the output of a \code{mqgam} call.}
 
-\item{qu}{A scalar in (0, 1) representing the quantile of interest, which should be an element of \code{names(obj$fit)}.}
+\item{qu}{A vector whose elements must be in (0, 1). Each element indicates a quantile of interest, 
+which should be an element of \code{names(obj$fit)}. If left to \code{NULL} the function
+\code{fun} will be applied to each of the quantile fits in \code{obj}.}
 
 \item{fun}{The method or function that we want to use on the \code{gamObject} corresponding to quantile \code{qu}. For instance
-\code{predict}, \code{plot} or \code{summary}.}
+\code{predict}, \code{plot} or \code{summary}. By default this is the identity function (\code{I}), which
+means that the fitted model for quantile \code{qu} is returned.}
 
 \item{...}{Additional arguments to be passed to \code{fun}.}
 }
 \value{
-The output of \code{fun}, whatever that is.
+A list where the i-th entry is the output of \code{fun} (whatever that is) corresponding to quantile \code{qu[i]}.
 }
 \description{
 Contrary to \code{qgam}, \code{mqgam} does not output a standard \code{gamObject}, hence
@@ -34,6 +37,10 @@ fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSe
 
 qdo(fit, 0.4, summary)
 invisible(qdo(fit, 0.4, plot, pages = 1))
+
+# Return the object for qu = 0.6 and then plot it
+tmp <- qdo(fit, 0.6)
+plot(tmp)
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.

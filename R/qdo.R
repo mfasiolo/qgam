@@ -5,12 +5,15 @@
 #'              methods such as \code{predict.gam} or \code{plot.gam} cannot be used directly. \code{qdo}
 #'              provides a simple wrapper for such methods.
 #'  
-#' @param obj A list which is the output of a \code{mqgam} call. 
-#' @param qu A scalar in (0, 1) representing the quantile of interest, which should be an element of \code{names(obj$fit)}.
+#' @param obj the output of a \code{mqgam} call. 
+#' @param qu A vector whose elements must be in (0, 1). Each element indicates a quantile of interest, 
+#'           which should be an element of \code{names(obj$fit)}. If left to \code{NULL} the function
+#'           \code{fun} will be applied to each of the quantile fits in \code{obj}.
 #' @param fun The method or function that we want to use on the \code{gamObject} corresponding to quantile \code{qu}. For instance
-#'            \code{predict}, \code{plot} or \code{summary}.
+#'            \code{predict}, \code{plot} or \code{summary}. By default this is the identity function (\code{I}), which
+#'            means that the fitted model for quantile \code{qu} is returned.
 #' @param ... Additional arguments to be passed to \code{fun}.
-#' @return The output of \code{fun}, whatever that is.
+#' @return A list where the i-th entry is the output of \code{fun} (whatever that is) corresponding to quantile \code{qu[i]}.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @examples
 #' library(qgam); library(MASS)
@@ -22,9 +25,21 @@
 #' 
 #' qdo(fit, 0.4, summary)
 #' invisible(qdo(fit, 0.4, plot, pages = 1))
+#' 
+#' # Return the object for qu = 0.6 and then plot it
+#' tmp <- qdo(fit, 0.6)
+#' plot(tmp)
 #' @export qdo
 #'
-qdo <- function(obj, qu, fun, ...){
+qdo <- function(obj, qu=NULL, fun=I, ...){
+  
+  if( is.null(qu) ) { qu <- names(obj$fit) } 
+  
+  if( length(qu)>1 ){
+    
+   out <- lapply(qu, function(.q) qdo(obj, .q, fun, ...)) 
+    
+  } else {
   
   if( !(qu %in% names(obj[["fit"]])) ) stop("qu is not in obj[[\"qu\"]].")
   
@@ -34,6 +49,8 @@ qdo <- function(obj, qu, fun, ...){
   tmpObj[["smooth"]] <- obj[["smooth"]]
   
   out <- fun(tmpObj, ...)
+  
+  }
   
   return( out )
 }
