@@ -55,6 +55,7 @@ have the correct environment set up for computing.}
                                        falls within the central 10\% of the bracket's width. By default \code{redWd = 10}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss, which we estimate to initialize the quantile
                                    fit (when a variance model is used). By default \code{b=0}.}
+                  \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 }}
 

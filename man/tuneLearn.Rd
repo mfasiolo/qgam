@@ -43,6 +43,7 @@ have the correct environment set up for computing.}
                                    number of folds. By default \code{K=50}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
+                 \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
                                           is reported. Set it to \code{"none"} to avoid it.}
 }}

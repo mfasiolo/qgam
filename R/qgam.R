@@ -19,7 +19,9 @@
 #'                This is important if (for example) your code relies on external data or packages: 
 #'                use the .export and .packages arguments to supply them so that all cluster nodes 
 #'                have the correct environment set up for computing. 
-#' @param control A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
+#' @param control A list of control parameters. The only one relevant here is \code{link}, which is the link function
+#'                used (see \code{?elf} and \code{?elflss} for defaults). All other control parameters are used by 
+#'                \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 #'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
 #' @param ... additional arguments passed to \code{mgcv::gam}.
@@ -87,7 +89,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
   
   # Setting up control parameter (mostly used by tuneLearnFast)
-  ctrl <- list( "gausFit" = NULL, "verbose" = FALSE, "b" = 0)
+  ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = if(is.formula(form)){"identity"}else{list("identity", "log")})
   
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)

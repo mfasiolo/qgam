@@ -43,6 +43,7 @@
 #'                                        falls within the central 10\% of the bracket's width. By default \code{redWd = 10}.}
 #'                   \item{\code{b} = offset parameter used by the mgcv::gauslss, which we estimate to initialize the quantile
 #'                                    fit (when a variance model is used). By default \code{b=0}.}
+#'                   \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 #' }
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
@@ -136,6 +137,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                 "aTol" = 0.05,
                 "b" = 0,
                 "gausFit" = NULL,
+                "link" = if(is.formula(form)){"identity"}else{list("identity", "log")},
                 "verbose" = FALSE )
   
   # Checking if the control list contains unknown names
@@ -188,12 +190,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }
   
   # Create gam object for full data fits
-  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
+  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA, link = ctrl$link), 
                                 "data" = data, "fit" = FALSE), argGam))
   
   # Create a gam object for each bootstrap sample
   bObj <- lapply(bootInd, function(.ind){
-    out <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA), 
+    out <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA, link = ctrl$link), 
                                  "data" = droplevels(data[.ind, , drop = F]), "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, 
                                  "fit" = FALSE), argGam))
     # Save boostrap indexes and out of sample responses, to be used later 

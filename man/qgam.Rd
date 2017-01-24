@@ -34,7 +34,9 @@ This is important if (for example) your code relies on external data or packages
 use the .export and .packages arguments to supply them so that all cluster nodes 
 have the correct environment set up for computing.}
 
-\item{control}{A list of control parameters to be used by \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.}
+\item{control}{A list of control parameters. The only one relevant here is \code{link}, which is the link function
+used (see \code{?elf} and \code{?elflss} for defaults). All other control parameters are used by 
+\code{tuneLearnFast}. See \code{?tuneLearnFast} for details.}
 
 \item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}

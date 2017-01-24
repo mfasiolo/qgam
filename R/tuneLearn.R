@@ -30,6 +30,7 @@
 #'                                    number of folds. By default \code{K=50}.}
 #'                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
+#'                  \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
 #'                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
 #'                                           is reported. Set it to \code{"none"} to avoid it.}
 #' }
@@ -90,7 +91,9 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   lsig <- sort( lsig )
   
   # Setting up control parameter
-  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "verbose" = FALSE, "progress" = ifelse(multicore, "none", "text") )
+  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "verbose" = FALSE, 
+                "link" = if(is.formula(form)){"identity"}else{list("identity", "log")}, 
+                "progress" = ifelse(multicore, "none", "text") )
    
   # Checking if the control list contains unknown names. Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
@@ -135,7 +138,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
   
   # Create gam object for full data fits
-  mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = data, fit = FALSE), argGam))
+  mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, fit = FALSE), argGam))
   
   # Store degrees of freedom for each value of lsig
   tmp <- pen.edf(gausFit)
@@ -187,7 +190,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
                 .inform = ctrl[["verbose"]],
                 .paropts = paropts,
                 # ... from here
-                data = data, lsig = lsig, form = form, fam = fam, qu = qu, loss = ctrl$loss, mainFit = mainFit, argGam = argGam)
+                data = data, lsig = lsig, form = form, fam = fam, link = ctrl$link, qu = qu,
+                loss = ctrl$loss, mainFit = mainFit, argGam = argGam)
   }, warning = function(w) {
     # There is a bug in plyr concerning a useless warning about "..."
     if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
@@ -217,7 +221,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
 # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. 
 # To be run in parallel.
 ###########
-.getBootDev <- function(bindex, data, lsig, form, fam, qu, loss, mainFit, argGam)
+.getBootDev <- function(bindex, data, lsig, form, fam, link, qu, loss, mainFit, argGam)
 { 
   nt <- length( lsig )
   n <- length( bindex )
@@ -235,7 +239,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   init <- NULL
   
   # Create gam object
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA), "data" = bdat, 
+  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = link), "data" = bdat, 
                                 "sp" = if(length(mainFit[[1]]$sp)){mainFit[[1]]$sp}else{NULL}, fit = FALSE), argGam))
 
   .z <- matrix(NA, nt, nrow(odat))
