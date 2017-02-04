@@ -108,7 +108,8 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   # Selecting the learning rate sigma
   learn <- NULL
   if( is.null(lsig) ) {  
-    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, ncores = ncores, control = ctrl, argGam = argGam)
+    learn <- tuneLearnFast(form = form, data = data, qu = qu, err = err, multicore = multicore, cluster = cluster, 
+                           ncores = ncores, paropts = paropts, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
   }
   
