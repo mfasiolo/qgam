@@ -87,7 +87,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
       if (!is.null(stats$name))
         linktemp <- stats$name
     }
-    else stop(linktemp, " link not available for negative binomial family; available links are \"identity\", \"log\" and \"sqrt\"")
+    else stop(linktemp, " link not available for elf family; available links are \"identity\", \"log\" and \"sqrt\"")
   }
   ## Theta <-  NULL;
   n.theta <- 1

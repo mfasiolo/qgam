@@ -205,24 +205,24 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     dl <- dlogis(z-mu, 0, lam*sig)
     pl <- plogis(z-mu, 0, lam*sig)
     
-    l <- sum( tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) )
+    l <- drop(crossprod(wt, tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) ))
     
     if (deriv>0) {
       
       dl <- dlogis(y, mu, lam*sig)
       pl <- plogis(y, mu, lam*sig)
       
-      l1[ , 1] <- (pl - tau) / sig
-      l1[ , 2] <- (z * (pl - tau) - 1) / sig  
+      l1[ , 1] <- wt * (pl - tau) / sig
+      l1[ , 2] <- wt * (z * (pl - tau) - 1) / sig  
       
       ## the second derivatives
       
       l2 <- matrix(0, n, 3)
       
       ## order mm,ms,ss
-      l2[ , 1] <- - dl / sig
-      l2[ , 2] <- - ((y-mu)*dl + pl - tau) / sig^2
-      l2[ , 3] <- (2*z*(tau - pl - 0.5 * (y-mu)*dl) + 1)/sig^2
+      l2[ , 1] <- wt * (- dl / sig)
+      l2[ , 2] <- wt * (- ((y-mu)*dl + pl - tau) / sig^2)
+      l2[ , 3] <- wt * (2*z*(tau - pl - 0.5 * (y-mu)*dl) + 1)/sig^2
       
       ## need some link derivatives for derivative transform
       ig1 <- cbind(family$linfo[[1]]$mu.eta(eta), family$linfo[[2]]$mu.eta(eta1))
@@ -239,10 +239,10 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       ## the third derivatives
       ## order mmm,mms,mss,sss
       l3 <- matrix(0,n,4) 
-      l3[ , 1] <- der$D2 / (lam^2 * sig^3)
-      l3[ , 2] <- (zl*der$D2 + 2*der$D1) / (lam * sig^3)
-      l3[ , 3] <- (2*(der$D0-tau) + 4*zl*der$D1 + zl^2*der$D2) / (sig^3)
-      l3[ , 4] <- - 3*l2[ , 3]/sig + lam*zl^2/sig^3 * (3*der$D1 + zl*der$D2 + 1/(lam*zl^2)) 
+      l3[ , 1] <- wt * der$D2 / (lam^2 * sig^3)
+      l3[ , 2] <- wt * (zl*der$D2 + 2*der$D1) / (lam * sig^3)
+      l3[ , 3] <- wt * (2*(der$D0-tau) + 4*zl*der$D1 + zl^2*der$D2) / (sig^3)
+      l3[ , 4] <- wt * (-  3*l2[ , 3]/sig + lam*zl^2/sig^3 * (3*der$D1 + zl*der$D2 + 1/(lam*zl^2)))
       
       g3 <- cbind(family$linfo[[1]]$d3link(mu), family$linfo[[2]]$d3link(sig))
     }
@@ -252,17 +252,16 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       ## order mmmm,mmms,mmss,msss,ssss
       
       l4 <- matrix(0, n, 5) 
-      l4[,1] <- - der$D3 / (lam^3 * sig^4)
-      l4[,2] <- -(zl*der$D3 + 3*der$D2) / (lam^2 * sig^4)
-      l4[,3] <- -(zl^2*der$D3 + 6*zl*der$D2 + 6*der$D1) / (lam*sig^4)
-      l4[,4] <- -3*l3[ , 3]/sig - zl/sig^4*(6*der$D1 + 6*zl*der$D2 + zl^2*der$D3 )
-      l4[,5] <- -4*(2*l3[ , 4] + 3*l2[ , 3]/sig)/sig - lam*zl^3/sig^4 * (4*der$D2 + zl*der$D3 - 2/(lam*zl^3))
+      l4[ , 1] <- wt * (- der$D3 / (lam^3 * sig^4))
+      l4[ , 2] <- wt * (-(zl*der$D3 + 3*der$D2) / (lam^2 * sig^4))
+      l4[ , 3] <- wt * (-(zl^2*der$D3 + 6*zl*der$D2 + 6*der$D1) / (lam*sig^4))
+      l4[ , 4] <- wt * (-3*l3[ , 3]/sig - zl/sig^4*(6*der$D1 + 6*zl*der$D2 + zl^2*der$D3 ))
+      l4[ , 5] <- wt * (-4*(2*l3[ , 4] + 3*l2[ , 3]/sig)/sig - lam*zl^3/sig^4 * (4*der$D2 + zl*der$D3 - 2/(lam*zl^3)))
       
       g4 <- cbind(family$linfo[[1]]$d4link(mu), family$linfo[[2]]$d4link(sig))
     }
     if (deriv) {
-      i2 <- family$tri$i2; i3 <- family$tri$i3
-      i4 <- family$tri$i4
+      i2 <- family$tri$i2;    i3 <- family$tri$i3;    i4 <- family$tri$i4
       
       ## transform derivates w.r.t. mu to derivatives w.r.t. eta...
       de <- mgcv:::gamlss.etamu(l1,l2,l3,l4,ig1,g2,g3,g4,i2,i3,i4,deriv-1)

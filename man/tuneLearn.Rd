@@ -42,8 +42,11 @@ have the correct environment set up for computing.}
                   \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
                                    number of folds. By default \code{K=50}.}
                   \item{\code{b} = offset parameter used by the mgcv::gauslss. By default \code{b=0}.}
+                  \item{\code{vtype} = type of variance estimator used to standardize the deviation from the main fit in the calibration.
+                                       If set to \code{"m"} the variance estimate obtained by the full data fit is used, if set to \code{"b"}
+                                       than the variance estimated produced by the bootstrap fits are used. By default \code{vtype="m"}.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
-                 \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
+                 \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
                                           is reported. Set it to \code{"none"} to avoid it.}
 }}
