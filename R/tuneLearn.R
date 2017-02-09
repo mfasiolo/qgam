@@ -109,11 +109,11 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   n <- nrow(data)
   nt <- length(lsig)
   
-  if( ctrl$sam == "boot" ){ # Create indexes of K boostrap dataset OR...
-    bootInd <- lapply(1:ctrl[["K"]], function(nouse) sample(1:n, n, replace = TRUE))
+  if( ctrl$sam == "boot" ){ # Create weights for K boostrap dataset OR...
+    wb <- lapply(1:ctrl[["K"]], function(nouse) tabulate(sample(1:n, n, replace = TRUE), n))
   } else { # ... OR for K training sets for CV 
     tmp <- sample(rep(1:ctrl[["K"]], length.out = n), n, replace = FALSE)
-    bootInd <- lapply(1:ctrl[["K"]], function(ii) which(tmp != ii)) 
+    wb <- lapply(1:ctrl[["K"]], function(ii) tabulate(which(tmp != ii), n)) 
   }
   
   # Gaussian fit, used for initializations 
@@ -173,7 +173,9 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     if( ii == nt ){
       pMat <- predict.gam(fit, type = "lpmatrix") 
       lpi <- attr(pMat, "lpi")
-      if( !is.null(lpi) ){ pMat <- pMat[ , lpi[[1]]] }
+      if( !is.null(lpi) ){ 
+        pMat <- pMat[ , lpi[[1]]] # "lpi" attribute lost here, re-inserted in next line 
+        attr(pMat, "lpi") <- lpi }
     }
     
     sdev <- NULL 
@@ -195,18 +197,19 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
                                 "sp" = if(length(mainFit[[1]]$sp)){mainFit[[1]]$sp}else{NULL}, fit = FALSE), argGam))
   
   # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. To be run in parallel.
-  # GLOBALS: lsig, ctrl, mainFit, pMat, lpi, bObj, argGam
-  .getBootDev <- function(bindex)
+  # GLOBALS: lsig, ctrl, mainFit, pMat, bObj, argGam
+  .getBootDev <- function(.wb)
   {   # # # # # # # # # .getBootDev START # # # # # # # # #
     y <- bObj$y 
-    ns <- length(lsig);   nb <- length(bindex);   n  <- length(y)
+    ns <- length(lsig); n  <- length(y)
     
     # Number of test observations
-    nt <- ifelse(ctrl$loss == "cal", n, n-length(unique(bindex))) 
+    nt <- ifelse(ctrl$loss == "cal", n, sum(!.wb)) 
     
     # Creating boot weights from boot indexes 
-    wb <- tabulate(bindex, n)
-    bObj$w <- wb
+    bObj$w <- .wb
+    
+    lpi <- attr(pMat, "lpi")
     
     init <- mainFit[[ns]]$init
     .z <- matrix(NA, ns, nt)
@@ -230,14 +233,14 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
       if( ctrl$loss == "cal" ){ # (1) Return standardized deviations from full data fit OR ... 
         if( ctrl$vtype == "b" ){ # (2) Use variance of bootstrap fit OR ...
           Vp <- fit$Vp
-          if( !is.null(lpi) ){  Vp <- fit$Vp[lpi[[1]], lpi[[1]]]  }
+          if( !is.null(lpi) ){  Vp <- Vp[lpi[[1]], lpi[[1]]]  }
           sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
         } else { # (2)  ... variance of the main fit
           sdev <- mainFit[[ii]]$sdev
         }
         .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
       } else { # (1) ... out of sample observations minus their fitted values 
-        .z[ii, ] <- (y - mu)[ !wb ]
+        .z[ii, ] <- (y - mu)[ !.wb ]
       }
     }
     
@@ -255,13 +258,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     registerDoSNOW(cluster)
     
     # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
-    clusterExport(cluster, c("pMat", "lpi", "bObj", "lsig", "ctrl", "mainFit", "argGam"), envir = environment())
+    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "mainFit", "argGam"), envir = environment())
     environment(.getBootDev) <- .GlobalEnv
   }
   
   # Loop over bootstrap datasets to get standardized deviations from full data fit
   withCallingHandlers({
-    z <- llply( .data = bootInd, 
+    z <- llply( .data = wb, 
                 .fun = .getBootDev,
                 .parallel = multicore,
                 .progress = ctrl[["progress"]],
