@@ -5,7 +5,7 @@ importFrom(doSNOW, "registerDoSNOW")
 importFrom(parallel, "makeCluster", "stopCluster", "detectCores", "clusterExport", "clusterEvalQ")
 
 importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom", "make.link", 
-                  "dlogis", "plogis", "complete.cases", "na.omit", "quantile")
+                  "dlogis", "plogis", "complete.cases", "na.omit", "quantile", "runif")
 importFrom(grDevices, "rgb")
 
 import(mgcv)

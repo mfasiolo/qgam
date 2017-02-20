@@ -178,7 +178,6 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
   
   ll <- function(y, X, coef, wt, family, offset = NULL, deriv=0, d1b=0, d2b=0, Hp=NULL, rank=0, fh=NULL, D=NULL) {
     ## function defining the gamlss Gaussian model log lik. 
-    ## N(mu,sigma^2) parameterized in terms of mu and log(sigma)
     ## deriv: 0 - eval
     ##        1 - grad and Hess
     ##        2 - diagonal of first deriv of Hess
@@ -264,10 +263,10 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       i2 <- family$tri$i2;    i3 <- family$tri$i3;    i4 <- family$tri$i4
       
       ## transform derivates w.r.t. mu to derivatives w.r.t. eta...
-      de <- mgcv:::gamlss.etamu(l1,l2,l3,l4,ig1,g2,g3,g4,i2,i3,i4,deriv-1)
+      de <- gamlss.etamu(l1,l2,l3,l4,ig1,g2,g3,g4,i2,i3,i4,deriv-1)
       
       ## get the gradient and Hessian...
-      ret <- mgcv:::gamlss.gH(X,jj,de$l1,de$l2,i2,l3=de$l3,i3=i3,l4=de$l4,i4=i4,
+      ret <- gamlss.gH(X,jj,de$l1,de$l2,i2,l3=de$l3,i3=i3,l4=de$l4,i4=i4,
                               d1b=d1b,d2b=d2b,deriv=deriv-1,fh=fh,D=D) 
       
     } else ret <- list()
@@ -332,7 +331,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     environment(ll) <- environment(residuals) <- environment(putQu) <- environment(getQu) <- env
   
   structure(list(family="elflss",ll=ll,link=paste(link),nlp=2,
-                 tri = mgcv:::trind.generator(2), ## symmetric indices for accessing derivative arrays
+                 tri = trind.generator(2), ## symmetric indices for accessing derivative arrays
                  initialize=initialize,
                  drop.intercept = c(FALSE, remInter),
                  #postproc=postproc,

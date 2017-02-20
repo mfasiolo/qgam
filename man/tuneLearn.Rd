@@ -45,8 +45,11 @@ have the correct environment set up for computing.}
                   \item{\code{vtype} = type of variance estimator used to standardize the deviation from the main fit in the calibration.
                                        If set to \code{"m"} the variance estimate obtained by the full data fit is used, if set to \code{"b"}
                                        than the variance estimated produced by the bootstrap fits are used. By default \code{vtype="m"}.}
+                  \item{\code{epsB} = positive tolerance used to assess convergence when fitting the regression coefficients on bootstrap data.  
+                                      In particular, if \code{|dev-dev_old|/(|dev|+0.1)<epsB} then convergence is achieved. 
+                                      Default is \code{epsB=1e-5}.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
-                 \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
+                  \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
                                           is reported. Set it to \code{"none"} to avoid it.}
 }}
@@ -100,11 +103,10 @@ lines(mcycle$times, pred$fit, lwd = 1)
 lines(mcycle$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)                        
 }
-\author{
-Matteo Fasiolo <matteo.fasiolo@gmail.com>.
-}
 \references{
 Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 }
-
+\author{
+Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}

@@ -1,8 +1,8 @@
 Package: qgam
 Type: Package
 Title: Fit smooth additive quantile regression models
-Version: 1.0
-Date: 2016-6-01
+Version: 1.1.0
+Date: 2017-2-20
 Author: Matteo Fasiolo, Simon N. Wood, Yannig Goude, Raphael Nedellec.
 Maintainer: Matteo Fasiolo <matteo.fasiolo@gmail.com>
 Description: Fit smooth additive quantile regression models, mainly using a qgam() 
@@ -13,7 +13,7 @@ References: Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016).
             Available at https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf.
 License: GPL (>=2)
 Depends:
-    mgcv (>= 1.8.16)
+    mgcv (>= 1.8.17)
 Imports:
     shiny,
     plyr,
@@ -24,4 +24,4 @@ Suggests:
     knitr,
     MASS
 VignetteBuilder: knitr
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

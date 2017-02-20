@@ -124,7 +124,6 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     
     sig <- exp(theta)
     
-    
     z <- (y - drop(mu)) / sig
     
     term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
@@ -219,8 +218,8 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   }
   
   initialize <- expression({
-    
-    mustart <- y
+
+    mustart <- quantile(y, family$getQu()) + y*0
     
   })
   
@@ -239,11 +238,30 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   #     qnbinom(p,size=Theta,mu=mu)
   #   }
   
+  get.null.coef <- function(G,start=NULL,etastart=NULL,mustart=NULL,...) {
+    ## Get an estimate of the coefs corresponding to maximum reasonable deviance...
+    y <- G$y
+    weights <- G$w
+    nobs <- G$n ## ignore codetools warning!!
+    ##start <- etastart <- mustart <- NULL
+    family <- G$family
+    eval(family$initialize) ## have to do this to ensure y numeric
+    y <- as.numeric(y)
+    mum <- quantile(y, get(".qu")) + 0*y
+    etam <- family$linkfun(mum)
+    null.coef <- qr.coef(qr(G$X), etam)
+    null.coef[is.na(null.coef)] <- 0;
+    ## get a suitable function scale for optimization routines
+    null.scale <- sum(family$dev.resids(y, mum, weights))/nrow(G$X) 
+    list(null.coef=null.coef,null.scale=null.scale)
+  }
   
-  environment(dev.resids) <- environment(ls) <- environment(aic) <- environment(Dd) <- environment(getTheta) <-
-    #  environment(rd)<- environment(qf) <- environment(variance) <- 
+  
+  #  environment(rd)<- environment(qf) <- environment(variance) <- 
+  environment(dev.resids) <- environment(ls) <- environment(aic) <- environment(Dd) <- 
+    environment(getTheta) <- 
     environment(putTheta) <- environment(putLam) <- environment(getLam) <-
-    environment(putQu) <- environment(getQu) <- env
+    environment(putQu) <- environment(getQu) <- environment(get.null.coef) <- env
   
   structure(list(family = "elf", link = linktemp, linkfun = stats$linkfun,
                  linkinv = stats$linkinv, dev.resids = dev.resids,Dd=Dd,
@@ -254,7 +272,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
                  validmu = validmu, valideta = stats$valideta, n.theta=n.theta, 
                  ini.theta = iniTheta, putTheta=putTheta,getTheta=getTheta, 
                  putQu=putQu, getQu=getQu, 
-                 putLam=putLam,getLam=getLam, 
+                 putLam=putLam,getLam=getLam, get.null.coef=get.null.coef,
                  use.wz=TRUE
                  #, rd=rd,qf=qf
   ),

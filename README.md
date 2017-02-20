@@ -183,7 +183,7 @@ set.seed(41241)
 sigSeq <- seq(4, 8, length.out = 16)
 closs <- tuneLearn(form = form, data = UKload, 
                    lsig = sigSeq, qu = qu, control = list("K" = 20), 
-                   multicore = TRUE, ncores = 4)
+                   multicore = TRUE, cluster = cl)
 proc.time() - tic
 stopCluster(cl)
 

@@ -38,6 +38,12 @@ have the correct environment set up for computing.}
                                       data.}
                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
                                      cross-validation. The second option can be used only if \code{ctrl$loss=="pin"}.}
+                  \item{\code{vtype} = type of variance estimator used to standardize the deviation from the main fit in the calibration.
+                                       If set to \code{"m"} the variance estimate obtained by the full data fit is used, if set to \code{"b"}
+                                       than the variance estimated produced by the bootstrap fits are used. By default \code{vtype="m"}.}
+                  \item{\code{epsB} = positive tolerance used to assess convergence when fitting the regression coefficients on bootstrap data.  
+                                      In particular, if \code{|dev-dev_old|/(|dev|+0.1)<epsB} then convergence is achieved. 
+                                      Default is \code{epsB=1e-5}.}
                   \item{\code{K} = if \code{sam=="boot"} this is the number of boostrap datasets, while if \code{sam=="kfold"} this is the 
                                    number of folds. By default \code{K=50}.}
                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
@@ -57,6 +63,8 @@ have the correct environment set up for computing.}
                                    fit (when a variance model is used). By default \code{b=0}.}
                   \item{\code{link} = Link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
+                  \item{\code{progress} = if TRUE progress in learning rate estimation is reported via printed text.
+                                          \code{TRUE} by default.}
 }}
 
 \item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
@@ -125,11 +133,10 @@ for(iq in quSeq){
   lines(mcycle$times, pred, col = 2)
 }                   
 }
-\author{
-Matteo Fasiolo <matteo.fasiolo@gmail.com>.
-}
 \references{
 Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 }
-
+\author{
+Matteo Fasiolo <matteo.fasiolo@gmail.com>.
+}

@@ -32,8 +32,11 @@
 #'                   \item{\code{vtype} = type of variance estimator used to standardize the deviation from the main fit in the calibration.
 #'                                        If set to \code{"m"} the variance estimate obtained by the full data fit is used, if set to \code{"b"}
 #'                                        than the variance estimated produced by the bootstrap fits are used. By default \code{vtype="m"}.}
+#'                   \item{\code{epsB} = positive tolerance used to assess convergence when fitting the regression coefficients on bootstrap data.  
+#'                                       In particular, if \code{|dev-dev_old|/(|dev|+0.1)<epsB} then convergence is achieved. 
+#'                                       Default is \code{epsB=1e-5}.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
-#'                  \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
+#'                   \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
 #'                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
 #'                                           is reported. Set it to \code{"none"} to avoid it.}
 #' }
@@ -94,7 +97,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   lsig <- sort( lsig )
   
   # Setting up control parameter
-  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "vtype" = "m", "verbose" = FALSE, 
+  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "vtype" = "m", "epsB" = 1e-5, "verbose" = FALSE, 
                 "link" = if(is.formula(form)){"identity"}else{list("identity", "log")}, 
                 "progress" = ifelse(multicore, "none", "text") )
   
@@ -196,6 +199,9 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, 
                                 "sp" = if(length(mainFit[[1]]$sp)){mainFit[[1]]$sp}else{NULL}, fit = FALSE), argGam))
   
+  # Preparing bootstrap object for gam.fit3
+  bObj <- .prepBootObj(obj = bObj, eps = ctrl$epsB, control = argGam$control)
+  
   # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. To be run in parallel.
   # GLOBALS: lsig, ctrl, mainFit, pMat, bObj, argGam
   .getBootDev <- function(.wb)
@@ -210,9 +216,10 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     bObj$w <- .wb
     
     lpi <- attr(pMat, "lpi")
+    glss <- inherits(bObj$family, "general.family")
     
-    init <- mainFit[[ns]]$init
-    .z <- matrix(NA, ns, nt)
+    init <- NULL
+    .z <- vector("list", ns)
     for( ii in ns:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
     {   
       # In the gamlss case lambda is a vector, and we have to take only those values that are in the boostrapped dataset.
@@ -222,28 +229,40 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
       bObj$family$putLam( lam )
       bObj$family$putTheta( lsig[ii] )
       
-      fit <- do.call("gam", c(list("G" = bObj, "start" = init), argGam))
-      init <- betas <- coef(fit)
+      init <- if(is.null(init)){ list(mainFit[[ii]]$init) } else { list(init, mainFit[[ii]]$init) }
       
-      # In the gamlss case, we are interested only in the calibrating the location mode
-      if( !is.null(lpi) ){ betas <- betas[lpi[[1]]] }
+      if( glss ){
+        init <- lapply(init, function(inp) mgcv:::Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
+        fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
+                          offset=bObj$offset, family=bObj$family, control=bObj$control, 
+                          Mp=bObj$Mp, start=init, needVb=(ctrl$loss=="cal" && ctrl$vtype=="b"))
+        # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
+        init <- betas <- mgcv:::Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
+        betas <- betas[lpi[[1]]] 
+      } else {
+        bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
+        fit <- .egamFit(x=bObj$X, y=bObj$y, sp=as.matrix(bObj$lsp0), Eb=bObj$Eb, UrS=bObj$UrS,
+                        offset=bObj$offset, U1=bObj$U1, Mp=bObj$Mp, family = bObj$family, weights=bObj$w,
+                        control=bObj$control, null.coef=bObj$null.coef, 
+                        start=init, needVb=(ctrl$loss == "cal" && ctrl$vtype == "b"))
+        init <- betas <- fit$coef
+      }
       
       mu <- pMat %*% betas
       
       if( ctrl$loss == "cal" ){ # (1) Return standardized deviations from full data fit OR ... 
         if( ctrl$vtype == "b" ){ # (2) Use variance of bootstrap fit OR ...
-          Vp <- fit$Vp
-          if( !is.null(lpi) ){  Vp <- Vp[lpi[[1]], lpi[[1]]]  }
+          Vp <- .getVp(fit, bObj, bObj$lsp0, lpi)
           sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
         } else { # (2)  ... variance of the main fit
           sdev <- mainFit[[ii]]$sdev
         }
-        .z[ii, ] <- (mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev
+        .z[[ii]] <- drop((mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev)
       } else { # (1) ... out of sample observations minus their fitted values 
-        .z[ii, ] <- (y - mu)[ !.wb ]
+        .z[[ii]] <- drop(y - mu)[ !.wb ]
       }
     }
-    
+    .z <- do.call("rbind", .z)
     return( .z )
   }  # # # # # # # # # .getBootDev END # # # # # # # # #
   
@@ -258,7 +277,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     registerDoSNOW(cluster)
     
     # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
-    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "mainFit", "argGam"), envir = environment())
+    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "mainFit", "argGam", ".getVp", ".egamFit", ".gamlssFit"), 
+                  envir = environment())
     environment(.getBootDev) <- .GlobalEnv
   }
   
@@ -293,6 +313,3 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   
   return( out )
 }
-
-
-
