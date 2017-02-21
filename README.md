@@ -19,9 +19,9 @@ require(RhpcBLASctl); blas_set_num_threads(1) #optional
 set.seed(6436)
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
-            err = 0.05, 
+            err = 0.1, 
             qu = 0.8, 
-            control = list("tol" = 0.05)) # <- sloppy tolerance to speed-up calibration 
+            control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -43,7 +43,7 @@ The second plot suggests so. Alternatively, we could have selected the learning 
 set.seed(6436)
 cal <- tuneLearn(accel~s(times, k=20, bs="ad"), 
                  data = mcycle, 
-                 err = 0.05, 
+                 err = 0.1, 
                  qu = 0.8,
                  lsig = seq(1, 3, length.out = 20)) #<- sequence of values for learning rate
                  
@@ -57,8 +57,8 @@ quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
 fit <- mqgam(accel~s(times, k=20, bs="ad"), 
              data = mcycle, 
-             err = 0.05, qu = quSeq, 
-             control = list("tol" = 0.1)) # <- sloppy tolerance to speed-up calibration 
+             err = 0.1, qu = quSeq, 
+             control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
 ```
 
 To save memory `mqgam` does not return one `mgcv::gamObject` for each quantile, but it avoids storing some redundant data (such as several copies of the design matrix). The output of `mqgam` can be manipulated using the `qdo` function.

@@ -40,7 +40,8 @@ set.seed(6436)
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
             qu = 0.8, 
-            control = list("tol" = 0.02)) # <- sloppy tolerance to speed-up calibration 
+            err = 0.1,
+            control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -60,6 +61,7 @@ set.seed(6436)
 cal <- tuneLearn(accel~s(times, k=20, bs="ad"), 
                  data = mcycle, 
                  qu = 0.8,
+                 err = 0.1,
                  lsig = seq(1, 3, length.out = 20), 
                  control = list("progress" = "none")) #<- sequence of values for learning rate
                  
@@ -73,8 +75,9 @@ quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
 fit <- mqgam(accel~s(times, k=20, bs="ad"), 
              data = mcycle, 
+             err = 0.1,
              qu = quSeq, 
-             control = list("tol" = 0.1)) # <- sloppy tolerance to speed-up calibration 
+             control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
 ```
 
 To save memory `mqgam` does not return one `mgcv::gamObject` for each quantile, but it avoids storing some redundant data (such as several copies of the design matrix). The output of `mqgam` can be manipulated using the `qdo` function.
@@ -90,9 +93,6 @@ for(iq in quSeq){
   lines(xSeq$times, pred, col = 2)
 }
 ```
-
-Notice that here two quantile curves cross on the far-right of the plot. Given that each quantile model is fitted
-independently, there is nothing preventing this from happening. This is a well-known problem of quantile regression. 
 
 Using `qdo` we can print out the summary for each quantile, for instance: 
 ```{r 6}
@@ -194,10 +194,10 @@ dataf <- data.frame(cbind(y, x, z))
 names(dataf) <- c("y", "x", "z")
 ```
 
-We fit a constant model to the median and we use `cqcheck` produce a diagnostic plot. 
+We fit a linear model to the median and we use `cqcheck` produce a diagnostic plot. 
 ```{r c2}
 qu <- 0.5
-fit <- qgam(y~1, qu = qu, data = dataf)
+fit <- qgam(y~x, qu = qu, data = dataf)
 cqcheck(obj = fit, v = c("x"), X = dataf, y = y) 
 ```
 
