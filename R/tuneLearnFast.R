@@ -341,14 +341,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                             control, argGam)
 {
   
-  # Initialization of regression and smoothing coefficients for full data (not bootstrap) fit, using Gaussian fit 
-  if( is.formula(mObj$formula) ) { # Extended Gam OR ...
-    initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
-                  "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
-    
-  } else { # ... GAMLSS
-    initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
-  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
+  # Initializing regression coefficient using gausFit is not good idea, especially for extreme values of lsig
+  initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1))  
   
   # Loss function to be minimized using Brent method
   objFun <- function(lsig, mObj, bObj, wb, initM, initB, pMat, qu, ctrl, varHat, cluster)

@@ -124,14 +124,14 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     fam <- "elf"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     varHat <- gausFit$sig2
-    initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
-                  "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
   } else {
     fam <- "elflss"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
-    initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1)) 
-  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
+  }  
+  
+  # Initializing regression coefficient using gausFit is not good idea, especially for extreme values of lsig
+  initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1))
   
   # Create gam object for full data fits
   mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, fit = FALSE), argGam))
