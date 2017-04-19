@@ -70,7 +70,7 @@
   eval(family$initialize)
   
   coefold <- mu <- eta <- NULL
-  old.pdev <- sum(dev.resids(y, linkinv(null.eta), weights, theta)) + t(null.coef)%*%St%*%null.coef 
+  old.pdev <- null.pdev <- sum(dev.resids(y, linkinv(null.eta), weights, theta)) + t(null.coef)%*%St%*%null.coef 
   
   # Calculating pen deviance using each initialization and choosing the best
   tmp <- lapply(start, function(.st){
@@ -251,10 +251,10 @@
     
     if (pdev-old.pdev>div.thresh) { ## solution diverging
       ii <- 1 ## step halving counter
-      # if (iter==1) { ## immediate divergence, need to shrink towards zero  ############ MATTEO #########
-      #   etaold <- null.eta; coefold <- null.coef                           # Does not seem to make sense anymore
-      # }
-      while (pdev -old.pdev > div.thresh)  { ## step halve until pdev <= old.pdev
+      if (iter == 1 && (pdev-null.pdev>div.thresh)) { ## Doing worse than null.coef at 1st iterat -> shrink towards zero
+        etaold <- null.eta; coefold <- null.coef; old.pdev <- null.pdev
+      }
+      while (pdev - old.pdev > div.thresh)  { ## step halve until pdev <= old.pdev
         if (ii > 100) 
           stop("inner loop 3; can't correct step size")
         ii <- ii + 1
