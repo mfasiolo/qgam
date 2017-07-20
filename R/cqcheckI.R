@@ -71,7 +71,6 @@
 #' # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 #' cqcheckI(obj = fit, v = c("x", "z"))
 #' }
-#' @export cqcheckI
 #'
 cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", height = "680px")
 {

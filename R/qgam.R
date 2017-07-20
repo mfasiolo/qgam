@@ -27,7 +27,7 @@
 #' @param ... additional arguments passed to \code{mgcv::gam}.
 #' @return A \code{gamObject}. See \code{?gamObject}.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
-#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at
 #'             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 #' @examples
 #
@@ -36,9 +36,9 @@
 #' ####
 #' library(qgam); library(MASS)
 #' 
-#' # Fit for quantile 0.8 using the best sigma
+#' # Fit for quantile 0.5 using the best sigma
 #' set.seed(6436)
-#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = 0.8)
+#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = 0.5)
 #' 
 #' # Plot the fit
 #' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -55,12 +55,13 @@
 #' set.seed(2)
 #' dat <- gamSim(1,n=400,dist="normal",scale=2)
 #' 
-#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
+#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.5)
 #' plot(fit, scale = FALSE, pages = 1)      
 #' 
 #' ######
 #' # Heteroscedastic example
 #' ######
+#' \dontrun{
 #' set.seed(651)
 #' n <- 5000
 #' x <- seq(-4, 3, length.out = n)
@@ -80,7 +81,7 @@
 #' lines(x, tmp$fit[ , 1])
 #' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
 #' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-#' @export qgam  
+#' }
 #'
 qgam <- function(form, data, qu, lsig = NULL, err = 0.05, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),

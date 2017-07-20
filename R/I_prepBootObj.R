@@ -6,12 +6,12 @@
   obj$control <- ctrl
   
   if (inherits(obj$family,"general.family")) {
-    obj$Sl <- mgcv:::Sl.setup(obj) ## prepare penalty sequence
-    obj$X <- mgcv:::Sl.initial.repara(obj$Sl,obj$X,both.sides=FALSE) ## re-parameterize accordingly
+    obj$Sl <- Sl.setup(obj) ## prepare penalty sequence
+    obj$X <- Sl.initial.repara(obj$Sl,obj$X,both.sides=FALSE) ## re-parameterize accordingly
   }
   
-  obj$rS <- mgcv:::mini.roots(obj$S, obj$off, ncol(obj$X), obj$rank)
-  Ssp <- mgcv:::totalPenaltySpace(obj$S,obj$H,obj$off,ncol(obj$X))
+  obj$rS <- mini.roots(obj$S, obj$off, ncol(obj$X), obj$rank)
+  Ssp <- totalPenaltySpace(obj$S,obj$H,obj$off,ncol(obj$X))
   obj$Eb <- Ssp$E       ## balanced penalty square root for rank determination purposes 
   obj$U1 <- cbind(Ssp$Y,Ssp$Z) ## eigen space basis
   obj$Mp <- ncol(Ssp$Z) ## null space dimension

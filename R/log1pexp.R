@@ -8,13 +8,12 @@
 #' @details We follow the recipe of Machler (2012), that is formula (10) page 7. 
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Machler, M. (2012). Accurately computing log(1-exp(-|a|)). 
-#'             URL: \url{http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf}.
+#'             URL: \url{https://cran.r-project.org/package=Rmpfr/vignettes/log1mexp-note.pdf}.
 #' @examples
 #' set.seed(141)
 #' library(qgam); 
 #' x <- rnorm(100, 0, 100)
 #' log1pexp(x) - log1p(exp(x))
-#' @export log1pexp
 log1pexp <- function(x)
 {
   indx <- .bincode(x, c(-Inf, -37, 18, 33.3, Inf), T)

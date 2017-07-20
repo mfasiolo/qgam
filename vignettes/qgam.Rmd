@@ -1,13 +1,5 @@
----
-title: "qgam: quantile non-parametric additive models"
-output: 
-  html_document: 
-    number_sections: yes
-    toc: yes
----
-
 <!--
-%\VignetteEngine{rmarkdown::render}
+%\VignetteEngine{knitr::docco_linear}
 %\VignetteIndexEntry{qgam_vignette}
 -->
   
@@ -16,7 +8,7 @@ library(knitr)
 opts_chunk$set(out.extra='style="display:block; margin: auto"', fig.align="center", tidy=FALSE)
 ```
 
-Introduction
+**qgam**: quantile non-parametric additive models
 =======================
   
 This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf).
@@ -256,7 +248,7 @@ The printed output gives some information about the optimizer used to estimate t
 Application to probabilistic electricity load forecasting
 =======================
 
-Here we consider a UK electricity demand dataset, taken from the national grid [website](https://www.nationalgrid.com). The dataset covers the period January 2011 to June 2016 and it contains the following variables:
+Here we consider a UK electricity demand dataset, taken from the national grid [website](http://www2.nationalgrid.com/). The dataset covers the period January 2011 to June 2016 and it contains the following variables:
 
    - `NetDemand` net electricity demand between 11:30am and 12am.
    - `wM` instantaneous temperature, averaged over several English cities.
@@ -290,7 +282,7 @@ set.seed(41241)
 sigSeq <- seq(4, 8, length.out = 16)
 closs <- tuneLearn(form = form, data = UKload, 
                    lsig = sigSeq, qu = qu, control = list("K" = 20), 
-                   multicore = TRUE, ncores = 2)
+                   multicore = TRUE, ncores = 2, err = 0.1)
 
 check(closs)
 ```
@@ -298,7 +290,7 @@ check(closs)
 Now let's fit the model with the learning rate corresponding to the lowest loss and let's look at the resulting smooth effects. 
 ```{r edf4}
 lsig <- closs$lsig
-fit <- qgam(form = form, data = UKload, lsig = lsig, qu = qu)
+fit <- qgam(form = form, data = UKload, lsig = lsig, qu = qu, err = 0.1)
 plot(fit, scale = F, page = 1)
 ```
 
@@ -325,7 +317,7 @@ cqcheck(fit, v = c("wM", "Posan"), scatter = T)
 References
 =======================
   
-  * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf.
+  * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf.
 
 
 

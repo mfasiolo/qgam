@@ -66,7 +66,7 @@
 #'                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
 #' }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
-#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at
 #'             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 #' @examples
 #' library(qgam); library(MASS)
@@ -95,6 +95,7 @@
 #' ###
 #' # Multiple quantile fits
 #' ###
+#' \dontrun{
 #' # Calibrate learning rate on a grid
 #' quSeq <- c(0.25, 0.5, 0.75)
 #' set.seed(5235)
@@ -113,8 +114,8 @@
 #' for(iq in quSeq){
 #'   pred <- qdo(fit, iq, predict)
 #'   lines(mcycle$times, pred, col = 2)
-#' }                   
-#' @export tuneLearnFast
+#' }   
+#' }                
 #'
 tuneLearnFast <- function(form, data, qu, err = 0.05,
                            multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
@@ -221,7 +222,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
     cluster <- tmp$cluster
     ncores <- tmp$ncores
     clusterCreated <- tmp$clusterCreated
-    registerDoSNOW(cluster)
+    registerDoParallel(cluster)
     
     # Load "qgam" and user-specified packages
     tmp <- unique( c("qgam", paropts[[".packages"]]) )
@@ -407,12 +408,12 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
         .init <- if(is.null(initB[[kk]])){ list(initM$start) } else { list(initB[[kk]], initM$start) }
         
         if( glss ){ # In gamlss I need to reparametrize initialization and in Ex GAM I need to get null coefficients.
-          .init <- lapply(.init, function(inp) mgcv:::Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
+          .init <- lapply(.init, function(inp) Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
           .fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
                              offset=bObj$offset, family=bObj$family, control=bObj$control, 
                              Mp=bObj$Mp, start=.init, needVb=(ctrl$loss=="cal" && ctrl$vtype=="b"))
           # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
-          .init <- .betas <- mgcv:::Sl.initial.repara(bObj$Sl, .fit$coef, inverse=TRUE, both.sides=FALSE)
+          .init <- .betas <- Sl.initial.repara(bObj$Sl, .fit$coef, inverse=TRUE, both.sides=FALSE)
           .betas <- .betas[.lpi[[1]]]
         } else {
           bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef

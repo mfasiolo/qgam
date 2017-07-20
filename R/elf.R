@@ -33,7 +33,6 @@
 #' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
 #' plot(fit, scale = FALSE, pages = 1)      
 #'
-#' @export elf
 #'
 ## (c) Simon N. Wood & Matteo Fasiolo
 ## 2013-2017. Released under GPL2.

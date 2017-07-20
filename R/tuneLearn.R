@@ -53,7 +53,7 @@
 #'                                           \code{FALSE} means no problem.}
 #'                                           }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
-#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
+#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at
 #'             \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
 #' @examples
 #' library(qgam); library(MASS)
@@ -83,7 +83,6 @@
 #' lines(mcycle$times, pred$fit, lwd = 1)
 #' lines(mcycle$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 #' lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)                        
-#' @export tuneLearn  
 #'
 tuneLearn <- function(form, data, lsig, qu, err = 0.05, 
                        multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
@@ -232,12 +231,12 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
       init <- if(is.null(init)){ list(mainFit[[ii]]$init) } else { list(init, mainFit[[ii]]$init) }
       
       if( glss ){
-        init <- lapply(init, function(inp) mgcv:::Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
+        init <- lapply(init, function(inp) Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
         fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
                           offset=bObj$offset, family=bObj$family, control=bObj$control, 
                           Mp=bObj$Mp, start=init, needVb=(ctrl$loss=="cal" && ctrl$vtype=="b"))
         # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
-        init <- betas <- mgcv:::Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
+        init <- betas <- Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
         betas <- betas[lpi[[1]]] 
       } else {
         bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
@@ -274,7 +273,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     cluster <- tmp$cluster
     ncores <- tmp$ncores
     clusterCreated <- tmp$clusterCreated
-    registerDoSNOW(cluster)
+    registerDoParallel(cluster)
     
     # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
     clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "mainFit", "argGam", ".getVp", ".egamFit", ".gamlssFit"), 

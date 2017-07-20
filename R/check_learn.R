@@ -24,7 +24,6 @@
 #'                y~s(x0)+s(x1)+s(x2)+s(x3), 
 #'                data=dat, qu = 0.5)
 #' check(b) 
-#' @export check.learn
 #'
 check.learn <- function(obj, ...)
 {  

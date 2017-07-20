@@ -27,13 +27,13 @@
     Eb <- attr(Sl,"E") ## balanced penalty sqrt
     
     ## the stability reparameterization + log|S|_+ and derivs... 
-    rp <- mgcv:::ldetS(Sl,rho=lsp,fixed=rep(FALSE,length(lsp)),np=q,root=TRUE) 
-    x <- mgcv:::Sl.repara(rp$rp,x) ## apply re-parameterization to x
-    Eb <- mgcv:::Sl.repara(rp$rp,Eb) ## root balanced penalty 
+    rp <- ldetS(Sl,rho=lsp,fixed=rep(FALSE,length(lsp)),np=q,root=TRUE) 
+    x <- Sl.repara(rp$rp,x) ## apply re-parameterization to x
+    Eb <- Sl.repara(rp$rp,Eb) ## root balanced penalty 
     St <- crossprod(rp$E) ## total penalty matrix
     E <- rp$E ## root total penalty
     attr(E,"use.unscaled") <- TRUE ## signal initialization code that E not to be further scaled   
-    for(jj in 1:length(start)){ start[[jj]] <- as.numeric(mgcv:::Sl.repara(rp$rp, start[[jj]])) } ## re-para start
+    for(jj in 1:length(start)){ start[[jj]] <- as.numeric(Sl.repara(rp$rp, start[[jj]])) } ## re-para start
     ## NOTE: it can be that other attributes need re-parameterization here
     ##       this should be done in 'family$initialize' - see mvn for an example. 
     
@@ -238,7 +238,7 @@
   
   if( !needVb ){ 
     
-    return( list("coefficients" = mgcv:::Sl.repara(rp$rp,fcoef,inverse=TRUE)) ) ## undo re-parameterization of coef 
+    return( list("coefficients" = Sl.repara(rp$rp,fcoef,inverse=TRUE)) ) ## undo re-parameterization of coef 
     
   } else {
     
@@ -270,13 +270,13 @@
         fitted.values[,j] <- family$linfo[[j]]$linkinv( linear.predictors[,j]) 
       }
     }
-    coef <- mgcv:::Sl.repara(rp$rp,fcoef,inverse=TRUE) ## undo re-parameterization of coef 
+    coef <- Sl.repara(rp$rp,fcoef,inverse=TRUE) ## undo re-parameterization of coef 
     
     if (!is.null(drop)&&!is.null(d1b)) { ## create full version of d1b with zeros for unidentifiable 
       db.drho <- matrix(0,length(bdrop),ncol(d1b));db.drho[!bdrop,] <- d1b
     } else db.drho <- d1b
     ## and undo re-para...
-    if (!is.null(d1b)) db.drho <- t(mgcv:::Sl.repara(rp$rp,t(db.drho),inverse=TRUE,both.sides=FALSE)) 
+    if (!is.null(d1b)) db.drho <- t(Sl.repara(rp$rp,t(db.drho),inverse=TRUE,both.sides=FALSE)) 
     
     ret <- list(coefficients=coef,family=family,y=y,prior.weights=weights,
                 fitted.values=fitted.values, linear.predictors=linear.predictors,

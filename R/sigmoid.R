@@ -24,7 +24,6 @@
 #' 
 #' if( any(c(e1, e2, e3) > 1) ) stop("Sigmoid derivatives are not estimated accurately")
 #'
-#' @export sigmoid
 #'
 sigmoid <- function(y, deriv = FALSE)
 {

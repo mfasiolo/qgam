@@ -44,7 +44,7 @@
 #' #######
 #' library(qgam)
 #' set.seed(15560)
-#' n <- 1000
+#' n <- 500
 #' x <- rnorm(n, 0, 1); z <- rnorm(n)
 #' X <- cbind(1, x, x^2, z, x*z)
 #' beta <- c(0, 1, 1, 1, 0.5)
@@ -86,7 +86,6 @@
 #' # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 #' cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
 #' 
-#' @export cqcheck
 #'
 #'
 cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05, scatter = FALSE, ...)
@@ -162,6 +161,7 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
     indx <- as.factor( .bincode(x1, bound, T, T) )       # Attribute data to bins
     levels(indx) <- 1:nbin1
     bsize <- as.vector( table(indx) )                    # Count number of data in each bin
+    indx <- as.integer(indx)
     bins <- numeric(nbin1)             
     for(ii in 1:nbin1){ bins[ii] <- sum(res[indx==ii]) } # Count number of 1s in each bin
     

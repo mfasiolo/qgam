@@ -23,7 +23,7 @@
 #'             general smooth models. Journal of the American Statistical Association.
 #' @examples
 #' set.seed(651)
-#' n <- 5000
+#' n <- 1000
 #' x <- seq(-4, 3, length.out = n)
 #' X <- cbind(1, x, x^2)
 #' beta <- c(0, 1, 1)
@@ -35,7 +35,7 @@
 #'
 #' # Fit median using elf directly: NOT RECOMMENDED
 #' fit <- gam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-#'            family = elflss(theta = -1.16, lam = 0.5, qu = 0.5), 
+#'            family = elflss(theta = -0.5, lam = 1, qu = 0.5), optimizer = "efs", 
 #'            data = dataf)
 #'            
 #' plot(x, dat, col = "grey", ylab = "y")
@@ -46,15 +46,14 @@
 #' 
 #' # Use qgam: RECOMMENDED
 #' fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-#'             data = dataf, qu = 0.95, 
-#'             lsig = -1.16) 
+#'             data = dataf, qu = 0.5, err = 0.1, argGam = list(optimizer = "efs"),
+#'             lsig = -0.5) 
 #' 
 #' plot(x, dat, col = "grey", ylab = "y")
 #' tmp <- predict(fit, se = TRUE)
 #' lines(x, tmp$fit[ , 1])
 #' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
 #' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-#' @export elflss
 #'
 ## (c) Simon N. Wood & Matteo Fasiolo
 ## 2013-2017. Released under GPL2.

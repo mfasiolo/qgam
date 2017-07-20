@@ -26,7 +26,6 @@
 #'                    control = list("tol" = 0.05)) # <- sloppy tolerance to speed-up calibration 
 #' check(b) 
 #' check(b, 3) # Produces only third plot
-#' @export check.learnFast
 #'
 check.learnFast <- function(obj, sel = NULL, ...)
 {  

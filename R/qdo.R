@@ -29,7 +29,6 @@
 #' # Return the object for qu = 0.6 and then plot it
 #' tmp <- qdo(fit, 0.6)
 #' plot(tmp)
-#' @export qdo
 #'
 qdo <- function(obj, qu=NULL, fun=I, ...){
   

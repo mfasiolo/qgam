@@ -3,7 +3,7 @@
 %- Also NEED an `\alias' for EACH other topic documented here.
 \title{UK electricity load data}
 \description{
-Dataset on UK electricity demand, taken from the national grid (\url{https://www.nationalgrid.com}).
+Dataset on UK electricity demand, taken from the national grid (\url{http://www2.nationalgrid.com/}).
 } %- end description
 
 \usage{

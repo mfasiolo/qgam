@@ -17,7 +17,6 @@
 #' b<-qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.5)
 #' plot(b, pages=1)
 #' check(b, pch=19, cex=.3) 
-#' @exportMethod check
 #' @docType methods
 #'
 check <- function (obj, ...) {

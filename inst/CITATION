@@ -1,0 +1,16 @@
+citHeader("If you use qgam please cite our paper:")
+
+citEntry(
+         entry="Manual",
+         title="Fast calibrated additive quantile regression.",
+         author=personList(as.person("Matteo Fasiolo"), as.person("Yannig Goude"),
+                    as.person("Raphael Nedellec"), as.person("Simon N. Wood") ), 
+	 year=2017,
+	 url="https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf",
+	 textVersion=paste(
+			   "Fasiolo M., Goude Y., Nedellec R. and Wood S. N. (2017).",
+			   "Fast calibrated additive quantile regression.", 
+                           "URL: https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf" 
+			  ))	 
+
+

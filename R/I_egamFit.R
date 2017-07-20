@@ -21,7 +21,7 @@
   
   ## Now a stable re-parameterization is needed....
   if (length(UrS)) {
-    rp <- mgcv:::gam.reparam(UrS, sp, deriv)
+    rp <- gam.reparam(UrS, sp, deriv)
     T <- diag(q)
     T[1:ncol(rp$Qs),1:ncol(rp$Qs)] <- rp$Qs
     T <- U1%*%T ## new params b'=T'b old params
@@ -32,7 +32,7 @@
     for(jj in 1:length(start)){ start[[jj]] <- t(T)%*%start[[jj]] }
     
     ## form x%*%T in parallel 
-    x <- .Call(mgcv:::C_mgcv_pmmult2,x,T,0,0,control$nthreads)
+    x <- .Call(.C_qgam_pmmult2,x,T,0,0,control$nthreads)
     rS <- list()
     for (i in 1:length(UrS)) {
       rS[[i]] <- rbind(rp$rS[[i]],matrix(0,Mp,ncol(rp$rS[[i]])))
@@ -105,7 +105,7 @@
   
   for (iter in 1:control$maxit) { ## start of main fitting iteration 
     if (control$trace) cat(iter," ")
-    dd <- mgcv:::dDeta(y,mu,weights,theta,family,0) ## derivatives of deviance w.r.t. eta
+    dd <- dDeta(y,mu,weights,theta,family,0) ## derivatives of deviance w.r.t. eta
     
     # good <- is.finite(dd$Deta.Deta2)
     
@@ -120,7 +120,7 @@
       z[!is.finite(z)] <- 0 ## avoid NaN in .C call - unused anyway
     } else use.wy <- family$use.wz
     
-    oo <- .C(mgcv:::C_pls_fit1,   
+    oo <- .C(.C_qgam_pls_fit1,   
              y=as.double(z[good]),X=as.double(x[good,]),w=as.double(w[good]),wy = as.double(wz[good]),
              E=as.double(Sr),Es=as.double(Eb),n=as.integer(sum(good)),
              q=as.integer(ncol(x)),rE=as.integer(rows.E),eta=as.double(z),
@@ -143,7 +143,7 @@
         z[!is.finite(z)] <- 0 ## avoid NaN in .C call - unused anyway
       } else use.wy <- family$use.wz
       
-      oo <- .C(mgcv:::C_pls_fit1, ##C_pls_fit1,
+      oo <- .C(.C_qgam_pls_fit1, ##.C_pls_fit1,
                y=as.double(z[good]),X=as.double(x[good,]),w=as.double(w[good]),wy = as.double(wz[good]),
                E=as.double(Sr),Es=as.double(Eb),n=as.integer(sum(good)),
                q=as.integer(ncol(x)),rE=as.integer(rows.E),eta=as.double(z),
@@ -307,7 +307,7 @@
   ##################### Calculate the Bayesian covariance matrix
   if( needVb )
   {
-    dd <- mgcv:::dDeta(y,mu,weights,theta,family,deriv)
+    dd <- dDeta(y,mu,weights,theta,family,deriv)
     w <- dd$Deta2 * .5
     z <- (eta-offset) - dd$Deta.Deta2 ## - .5 * dd$Deta[good] / w
     wf <- pmax(0,dd$EDeta2 * .5) ## Fisher type weights 
@@ -350,7 +350,7 @@
       }
     }
     
-    oo <- .C(mgcv:::C_gdi2,
+    oo <- .C(.C_qgam_gdi2,
              X=as.double(x[good,]),E=as.double(Sr),Es=as.double(Eb),rS=as.double(unlist(rS)),
              U1 = as.double(U1),sp=as.double(exp(sp)),theta=as.double(theta),
              z=as.double(z),w=as.double(w),wz=as.double(wz),wf=as.double(wf),Dth=as.double(dd$Dth),
