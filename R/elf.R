@@ -218,7 +218,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   
   initialize <- expression({
 
-    mustart <- y # this ---> quantile(y, family$getQu()) + y*0 <--- is very bad idea
+    mustart <- quantile(y, family$getQu()) + y * 0 # this ---> y <--- is very bad idea
     
   })
   

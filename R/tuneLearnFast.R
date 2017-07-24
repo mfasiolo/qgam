@@ -181,13 +181,13 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   
   # (Optional) Initializing the search range for sigma
   if( is.null(ctrl[["init"]]) ){
-    # We assume lam~0 and we match (2 times) the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
+    # We assume lam~0 and we match the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
     if( !is.list(form) ){
-      isig <- log(sqrt( 5 * gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     } else {
-      isig <- log(sqrt( 5 * (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+      isig <- log(sqrt( (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
     }
   } else {
     isig <- ctrl[["init"]]
@@ -342,8 +342,13 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                             control, argGam)
 {
   
-  # Initializing regression coefficient using gausFit is not good idea, especially for extreme values of lsig
-  initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1))  
+  # Initializing smoothing parameters using gausFit is a very BAD idea
+  if( is.formula(mObj$formula) ) { # Extended Gam OR ...
+    initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 		
+                  "in.out" = NULL) # let gam() initialize sp via initial.spg() 		
+  } else { # ... GAMLSS		
+    initM <- list("start" = NULL, "in.out" = NULL) # I have no clue
+  }
   
   # Loss function to be minimized using Brent method
   objFun <- function(lsig, mObj, bObj, wb, initM, initB, pMat, qu, ctrl, varHat, cluster)

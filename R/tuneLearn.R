@@ -119,18 +119,19 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   }
   
   # Gaussian fit, used for initializations 
+  # NB Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(form) ) {
     fam <- "elf"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     varHat <- gausFit$sig2
+    initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
+                  "in.out" = NULL) # let gam() initialize sp via initial.spg() 
   } else {
     fam <- "elflss"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
+    initM <- list("start" = NULL, "in.out" = NULL) # Have no cluse
   }  
-  
-  # Initializing regression coefficient using gausFit is not good idea, especially for extreme values of lsig
-  initM <- list("start" = NULL, "in.out" = list("sp" = gausFit$sp, "scale" = 1))
   
   # Create gam object for full data fits
   mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, fit = FALSE), argGam))
@@ -152,7 +153,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   ############## START FITTING ON FULL DATA
   # FULL data fits, used to estimate the smoothing parameters 
   mainFit <- vector("list", nt)
-  for( ii in nt:1 ) # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harder)
+  for( ii in 1:nt ) # START lsigma loop, from smallest to largest (because when lsig is large the smooth params diverge)
   {
     mainObj$family$putLam( err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig[ii])) )
     mainObj$family$putTheta( lsig[ii] )
@@ -168,11 +169,11 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
         invokeRestart("muffleWarning")
       }
     })
-    
+
     if( !is.null(edfStore) ) { edfStore[ii, ] <- c(lsig[ii], pen.edf(fit)) }
     
     # Create prediction matrix (only in the first iteration)
-    if( ii == nt ){
+    if( ii == 1 ){
       pMat <- predict.gam(fit, type = "lpmatrix") 
       lpi <- attr(pMat, "lpi")
       if( !is.null(lpi) ){ 
