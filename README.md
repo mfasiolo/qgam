@@ -181,7 +181,7 @@ clusterEvalQ(cl, {library(RhpcBLASctl); blas_set_num_threads(1)})
 tic <- proc.time()
 set.seed(41241)
 sigSeq <- seq(4, 8, length.out = 16)
-closs <- tuneLearn(form = form, data = UKload, 
+closs <- tuneLearn(form = form, data = UKload, err = 0.1,
                    lsig = sigSeq, qu = qu, control = list("K" = 20), 
                    multicore = TRUE, cluster = cl)
 proc.time() - tic
@@ -193,14 +193,14 @@ check(closs)
 Let's fit the model with the learning rate corresponding to the lowest loss and let's look at the resulting smooth effects.
 ```R
 lsig <- closs$lsig
-fit <- qgam(form = form, data = UKload, err = 0.05, lsig = lsig, qu = qu)
+fit <- qgam(form = form, data = UKload, err = 0.1, lsig = lsig, qu = qu)
 plot(fit, scale = F, page = 1)
 ```
 
 We can fit multiple quantiles using `mqgam`. Here we use pre-computed a learning-rate for each quantile, in order to save time.
 ```R
 qus <- seq(0.05, 0.95, length.out = 20)
-lsig <- rep(6, 20)
+lsig <- rep(5, 20)
 
 fitM <- mqgam(form = form, data = UKload, err = 0.1, lsig = lsig, qu = qus)
 
