@@ -104,7 +104,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     fam <- "elflss"
     if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) }
     varHat <- 1/ctrl$gausFit$fit[ , 2]^2
-  }  # Start = NULL in gamlss because it's not to clear how to deal with model for sigma 
+  }   
   
   # Selecting the learning rate sigma
   learn <- NULL
@@ -114,7 +114,9 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     lsig <- learn$lsig
   }
   
-  # Fit model
+  # Fit model for fixed log-sigma
+  # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
+  if( fam=="elf" && is.null(argGam$start) ) { argGam$start <- coef(ctrl$gausFit) + c(qnorm(qu, 0, sqrt(varHat)), rep(0, length(coef(ctrl$gausFit))-1))  }
   lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
   fit <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = lam, theta = lsig), "data" = data), argGam))
   
