@@ -11,7 +11,7 @@ opts_chunk$set(out.extra='style="display:block; margin: auto"', fig.align="cente
 **qgam**: quantile non-parametric additive models
 =======================
   
-This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf).
+This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://arxiv.org/abs/1707.03307).
 
 The main fitting functions are:
 
@@ -260,7 +260,7 @@ Here we consider a UK electricity demand dataset, taken from the national grid [
    - `Holy` binary variable indicating holidays.
    - `Year` and `Date` should obvious, and partially redundant.
 
-See [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf) for more details. This is how the demand over the period looks like:
+See [Fasiolo et al., 2016](https://arxiv.org/abs/1707.03307) for more details. This is how the demand over the period looks like:
 ```{r edf1}
 data("UKload")
 tmpx <- seq(UKload$Year[1], tail(UKload$Year, 1), length.out = nrow(UKload)) 
@@ -317,7 +317,7 @@ cqcheck(fit, v = c("wM", "Posan"), scatter = T)
 References
 =======================
   
-  * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf.
+  * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at https://arxiv.org/abs/1707.03307
 
 
 

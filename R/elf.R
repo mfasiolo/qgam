@@ -15,7 +15,7 @@
 #' @details This function is meant for internal use only.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com> and Simon N. Wood. 
 #' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+#'             Available at \url{https://arxiv.org/abs/1707.03307}.
 #'             
 #'             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
 #'             general smooth models. Journal of the American Statistical Association.

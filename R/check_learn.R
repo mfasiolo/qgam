@@ -15,7 +15,7 @@
 #'          the slope is negative.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-#'             Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+#'             Available at \url{https://arxiv.org/abs/1707.03307}.
 #' @examples
 #' library(qgam)
 #' set.seed(525)

@@ -40,8 +40,9 @@
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @examples
 #' #######
-#' # Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
+#' # Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #' #######
+#' \dontrun{
 #' library(qgam)
 #' set.seed(15560)
 #' n <- 500
@@ -85,8 +86,7 @@
 #' 
 #' # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 #' cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
-#' 
-#'
+#' }
 #'
 cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, lev = 0.05, scatter = FALSE, ...)
 {
