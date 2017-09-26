@@ -121,8 +121,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                            multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                            control = list(), argGam = NULL)
 { 
-  # Removing all NAs from data
-  data <- na.omit( data )
+  # Removing all NAs and unused levels from data
+  data <- droplevels( na.omit( data ) )
   
   n <- nrow(data)
   nq <- length(qu)

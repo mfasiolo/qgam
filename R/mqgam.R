@@ -80,6 +80,9 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
 {
   nq <- length(qu)
   
+  # Removing all NAs and unused levels from data
+  data <- droplevels( na.omit( data ) )
+  
   if( length(err) != nq ){
     if(length(err) == 1) { 
       err <- rep(err, nq) 

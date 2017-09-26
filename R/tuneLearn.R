@@ -90,8 +90,8 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
 { 
   if( length(qu) > 1 ) stop("length(qu) > 1, but this method works only for scalar qu")
   
-  # Removing all NAs from data
-  data <- na.omit( data )
+  # Removing all NAs and unused levels from data
+  data <- droplevels( na.omit( data ) )
   
   lsig <- sort( lsig )
   
