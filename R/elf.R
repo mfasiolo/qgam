@@ -150,7 +150,8 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     ## Dmu is deriv w.r.t. mu once, etc...
     r$Dmu <- - 2 * wt * ( (pl - tau) / sig )
     r$Dmu2 <- 2 * wt * ( dl / sig )
-    r$EDmu2 <- 2 * wt * (tau*(1-tau) / (lam + 1)) / sig^2 ## exact (or estimated) expected weight #### XXX ####
+    # r$EDmu2 <- 2 * wt * (tau*(1-tau) / (lam + 1)) / sig^2 ## exact (or estimated) expected weight #### XXX ####
+    r$EDmu2 <- r$Dmu2 # It make more sense using the observed information everywhere
     if (level>0) { ## quantities needed for first derivatives
       zl <- z / lam
       der <- sigmoid(zl, deriv = TRUE)
