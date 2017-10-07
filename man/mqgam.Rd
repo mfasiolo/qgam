@@ -59,15 +59,30 @@ A list with entries: \itemize{
 This function fits a smooth additive regression model to several quantiles.
 }
 \examples{
+
+#####
+# Multivariate Gaussian example
+####
+library(qgam)
+set.seed(2)
+dat <- gamSim(1, n=300, dist="normal", scale=2)
+
+fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
+             control = list("tol" = 0.05)) # <- semi-sloppy tolerance to speed-up calibration
+
+invisible( qdo(fit, 0.2, plot, pages = 1) )
+
 #####
 # Univariate "car" example
 ####
+\dontrun{
 library(qgam); library(MASS)
 
 # Fit for quantile 0.8 using the best sigma
 quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
+       control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -76,24 +91,13 @@ for(iq in quSeq){
   pred <- qdo(fit, iq, predict, newdata = xSeq)
   lines(xSeq$times, pred, col = 2)
 }
+}
 
-#####
-# Multivariate Gaussian example
-####
-library(qgam)
-set.seed(2)
-dat <- gamSim(1, n=400, dist="normal", scale=2)
-
-fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
-             control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration
-
-invisible( qdo(fit, 0.2, plot, pages = 1) )
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at
+            \url{https://arxiv.org/abs/1707.03307}.
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-\references{
-Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. Available at
-            \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
-}
-

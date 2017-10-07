@@ -41,8 +41,8 @@ invisible(qdo(fit, 0.4, plot, pages = 1))
 # Return the object for qu = 0.6 and then plot it
 tmp <- qdo(fit, 0.6)
 plot(tmp)
+
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-

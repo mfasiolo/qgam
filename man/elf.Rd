@@ -42,15 +42,15 @@ plot(fit, scale = FALSE, pages = 1)
 fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
 plot(fit, scale = FALSE, pages = 1)      
 
-}
-\author{
-Matteo Fasiolo <matteo.fasiolo@gmail.com> and Simon N. Wood.
+
 }
 \references{
 Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-            Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+            Available at \url{https://arxiv.org/abs/1707.03307}.
             
             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
             general smooth models. Journal of the American Statistical Association.
 }
-
+\author{
+Matteo Fasiolo <matteo.fasiolo@gmail.com> and Simon N. Wood.
+}

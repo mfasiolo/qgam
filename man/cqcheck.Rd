@@ -60,11 +60,12 @@ Having fitted an additive model for, say, quantile \code{qu=0.4} one would expec
 }
 \examples{
 #######
-# Example 1: Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
+# Bivariate additive model y~1+x+x^2+z+x*z/2+e, e~N(0, 1)
 #######
+\dontrun{
 library(qgam)
 set.seed(15560)
-n <- 1000
+n <- 500
 x <- rnorm(n, 0, 1); z <- rnorm(n)
 X <- cbind(1, x, x^2, z, x*z)
 beta <- c(0, 1, 1, 1, 0.5)
@@ -105,9 +106,9 @@ fit <- qgam(y~s(x)+z+I(x*z), qu = qu, data = dataf)
 
 # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 cqcheck(obj = fit, v = c("x", "z"), nbin = c(5, 5))
+}
 
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-

@@ -35,8 +35,8 @@ e3 <- abs((sigmoid(p+h, TRUE)$D2 - sigmoid(p-h, TRUE)$D2) /
 
 if( any(c(e1, e2, e3) > 1) ) stop("Sigmoid derivatives are not estimated accurately")
 
+
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-

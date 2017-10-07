@@ -33,7 +33,7 @@ This function is meant for internal use only.
 }
 \examples{
 set.seed(651)
-n <- 5000
+n <- 1000
 x <- seq(-4, 3, length.out = n)
 X <- cbind(1, x, x^2)
 beta <- c(0, 1, 1)
@@ -45,7 +45,7 @@ names(dataf) <- c("y", "x")
 
 # Fit median using elf directly: NOT RECOMMENDED
 fit <- gam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-           family = elflss(theta = -1.16, lam = 0.5, qu = 0.5), 
+           family = elflss(theta = -0.5, lam = 1, qu = 0.5), optimizer = "efs", 
            data = dataf)
            
 plot(x, dat, col = "grey", ylab = "y")
@@ -56,23 +56,23 @@ lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
 
 # Use qgam: RECOMMENDED
 fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-            data = dataf, qu = 0.95, 
-            lsig = -1.16) 
+            data = dataf, qu = 0.5, err = 0.1, argGam = list(optimizer = "efs"),
+            lsig = -0.5) 
 
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- predict(fit, se = TRUE)
 lines(x, tmp$fit[ , 1])
 lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
 lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-}
-\author{
-Matteo Fasiolo <matteo.fasiolo@gmail.com> and Simon N. Wood.
+
 }
 \references{
 Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-            Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
+            Available at \url{https://arxiv.org/abs/1707.03307}.
             
             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
             general smooth models. Journal of the American Statistical Association.
 }
-
+\author{
+Matteo Fasiolo <matteo.fasiolo@gmail.com> and Simon N. Wood.
+}

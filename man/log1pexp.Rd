@@ -24,11 +24,10 @@ library(qgam);
 x <- rnorm(100, 0, 100)
 log1pexp(x) - log1p(exp(x))
 }
+\references{
+Machler, M. (2012). Accurately computing log(1-exp(-|a|)). 
+            URL: \url{https://cran.r-project.org/package=Rmpfr/vignettes/log1mexp-note.pdf}.
+}
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-\references{
-Machler, M. (2012). Accurately computing log(1-exp(-|a|)). 
-            URL: \url{http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf}.
-}
-

@@ -38,12 +38,12 @@ b <- tuneLearnFast(y ~ s(x0)+s(x1)+s(x2)+s(x3),
                    control = list("tol" = 0.05)) # <- sloppy tolerance to speed-up calibration 
 check(b) 
 check(b, 3) # Produces only third plot
+
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+            Available at \url{https://arxiv.org/abs/1707.03307}.
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-\references{
-Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-            Available at \url{https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf}.
-}
-

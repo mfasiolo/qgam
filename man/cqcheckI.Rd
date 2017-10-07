@@ -89,8 +89,8 @@ fit <- qgam(y~s(x)+z+I(x*z), qu = qu, err = 0.05, data = dataf)
 # It does! The real model is: y ~ 1 + x + x^2 + z + x*z/2 + e, e ~ N(0, 1)
 cqcheckI(obj = fit, v = c("x", "z"))
 }
+
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.
 }
-
