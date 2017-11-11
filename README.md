@@ -1,3 +1,7 @@
+
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/qgam)](https://cran.r-project.org/package=qgam)
+[![Build Status](https://travis-ci.org/mfasiolo/qgam.svg?branch=master)](https://travis-ci.org/mfasiolo/qgam)
+
 This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf).
 
 The main functions are:
