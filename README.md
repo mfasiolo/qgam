@@ -2,7 +2,7 @@
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/qgam)](https://cran.r-project.org/package=qgam)
 [![Build Status](https://travis-ci.org/mfasiolo/qgam.svg?branch=master)](https://travis-ci.org/mfasiolo/qgam)
 
-This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf).
+This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2017](https://arxiv.org/abs/1707.03307).
 
 The main functions are:
 - `qgam` fits an additive quantile regression model to a single quantile. Very similar to `mgcv::gam`. It returns an `mgcv::gamObject`.
@@ -162,7 +162,7 @@ Here we consider a UK electricity demand dataset, taken from the national grid [
    - `Holy` binary variable indicating holidays.
    - `Year` and `Date` should obvious, and partially redundant.
    
-See [Fasiolo et al., 2016](https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf) for more details. This is how the demand over the period looks like:
+See [Fasiolo et al., 2017](https://arxiv.org/abs/1707.03307) for more details. This is how the demand over the period looks like:
 
 ```R
 data("UKload")
@@ -256,4 +256,4 @@ Sys.sleep(0.5)
 References
 ----------------------------
   
-  * Fasiolo, M., Goude Y., Nedellec R. and Wood, S. N. (2016). Fast calibrated additive quantile regression. URL: https://github.com/mfasiolo/qgam/blob/master/draft_qgam.pdf
+  * Fasiolo, M., Goude Y., Nedellec R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. URL: https://arxiv.org/abs/1707.03307
