@@ -118,21 +118,21 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   
   dev.resids <- function(y, mu, wt, theta=NULL) {        ##### XXX #####
     if( is.null(theta) ) theta <- get(".Theta")
-    tau <- 1 - get(".qu")
+    tau <- get(".qu")
     lam <- get(".lam")
     
     sig <- exp(theta)
     
     z <- (y - drop(mu)) / sig
     
-    term <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - tau*z + lam*log1pexp( z / lam )
+    term <- (1-tau)*lam*log1p(-tau) + lam*tau*log(tau) - (1-tau)*z + lam*log1pexp( z / lam )
     
     2 * wt * term
   }
   
   Dd <- function(y, mu, theta, wt, level=0) {
     
-    tau <- 1 - get(".qu")
+    tau <- get(".qu")
     lam <- get(".lam")
     mu <- drop(mu)
     
@@ -148,37 +148,27 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     ## get the quantities needed for IRLS. 
     ## Dmu2eta2 is deriv of D w.r.t mu twice and eta twice,
     ## Dmu is deriv w.r.t. mu once, etc...
-    r$Dmu <- - 2 * wt * ( (pl - tau) / sig )
+    r$Dmu <- - 2 * wt * ( (pl - 1 + tau) / sig )
     r$Dmu2 <- 2 * wt * ( dl / sig )
-    # r$EDmu2 <- 2 * wt * (tau*(1-tau) / (lam + 1)) / sig^2 ## exact (or estimated) expected weight #### XXX ####
+    # r$EDmu2 <- 2 * wt * ((1-tau)*tau / (lam + 1)) / sig^2 ## exact (or estimated) expected weight #### XXX ####
     r$EDmu2 <- r$Dmu2 # It make more sense using the observed information everywhere
     if (level>0) { ## quantities needed for first derivatives
       zl <- z / lam
       der <- sigmoid(zl, deriv = TRUE)
       
-      r$Dth <- - 2 * wt * sig * ( z * (pl - tau) / sig ) 
-      #r$Dmuth <- 2 * wt * sig * ( ((y-mu)*dl + pl - tau) / sig^2 )
-      r$Dmuth <- 2 * wt * ( ((y-mu)*dl + pl - tau) / sig )
-      #r$Dmu3 <- - 2 * wt * ( der$D2 / (lam^2 * sig^3) )  
+      r$Dth <- - 2 * wt * sig * ( z * (pl - 1 + tau) / sig ) 
+      r$Dmuth <- 2 * wt * ( ((y-mu)*dl + pl - 1 + tau) / sig )
       r$Dmu3 <- - (2 * wt * ( der$D2 / (lam * sig) )) / (lam*sig^2) 
       
-      #D2mDt <- (zl*der$D2 + 2*der$D1) / (lam*sig^3)
       D2mDt <- ((zl*der$D2 + 2*der$D1) / (lam*sig)) / (sig^2)
       r$Dmu2th <- - 2 * wt * sig * D2mDt
     } 
     if (level>1) { ## whole damn lot
-      # r$Dmu4 <- 2 * wt * ( der$D3 / (lam^3 * sig^4) )
       r$Dmu4 <- (2 * wt * ( der$D3 / (lam * sig^2) )) / (lam^2 * sig^2)
-      #       r$Dth2 <- - 2 * wt * sig * ( z * (pl - tau) / sig + 
-      #                                    sig * (2*z*(tau - pl - 0.5 * (y-mu)*dl)/sig^2) )
-      r$Dth2 <- - 2 * wt *  ( z * (pl - tau)  + (2*z*(tau - pl - 0.5 * (y-mu)*dl)) )
-      #       r$Dmuth2 <- 2 * wt * sig * ( ((y-mu)*dl + pl - tau) / sig^2 - 
-      #                                   sig * (2*(der$D0-tau) + 4*zl*der$D1 + zl^2*der$D2) / (sig^3) )
-      r$Dmuth2 <- 2 * wt * ( ((y-mu)*dl + pl - tau) / sig - 
-                               (2*(der$D0-tau) + 4*zl*der$D1 + zl^2*der$D2) / sig )
-      #       r$Dmu2th2 <- - 2 * wt * sig * (D2mDt - sig * (zl^2*der$D3 + 6*zl*der$D2 + 6*der$D1) / (lam*sig^4))
+      r$Dth2 <- - 2 * wt *  ( z * (pl - 1 + tau)  + (2*z*(1 - tau - pl - 0.5 * (y-mu)*dl)) )
+      r$Dmuth2 <- 2 * wt * ( ((y-mu)*dl + pl - 1 + tau) / sig - 
+                               (2*(der$D0 - 1 + tau) + 4*zl*der$D1 + zl^2*der$D2) / sig )
       r$Dmu2th2 <- - 2 * wt * (sig * D2mDt - (zl^2*der$D3 + 6*zl*der$D2 + 6*der$D1) / (lam*sig^2))
-      #       r$Dmu3th <- 2 * wt * sig * ( (zl*der$D3 + 3*der$D2) / (lam^2 * sig^4) )
       r$Dmu3th <- 2 * wt * ( (zl*der$D3 + 3*der$D2) / (lam * sig) ) / (lam * sig^2)
     }
     r
@@ -188,29 +178,28 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     if (is.null(theta)) theta <- get(".Theta")
     sig <- exp(theta)
     
-    tau <- 1 - get(".qu")
+    tau <- get(".qu")
     lam <- get(".lam")
     
     z <- (y - drop(mu)) / sig
     
-    term <- - tau * z + lam * log1pexp( z / lam ) + log( sig * lam * beta(lam*tau, (1-tau)*lam) )
+    term <- - (1-tau) * z + lam * log1pexp( z / lam ) + log( sig * lam * beta(lam*(1-tau), tau*lam) )
     
     2 * sum(term * wt)
   }
   
-  ls <- function(y, w, n, theta, scale) { ##### XXX n is number of observations?
-    tau <- 1 - get(".qu")
+  ls <- function(y, w, theta, scale) { ##### XXX n is number of observations?
+    tau <- get(".qu")
     lam <- get(".lam")
     ## the log saturated likelihood function.
     sig <- exp(theta)
     
-    ls <- sum( w * (tau*lam*log(tau) + lam*(1-tau) * log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))) )
+    ls <- sum( w * ((1-tau)*lam*log1p(-tau) + lam*tau*log(tau) - log(lam * sig * beta(lam*(1-tau), lam*tau))) )
     
     #lsth <- - sig * sum(w / sig)
     lsth <- - sum(w)
     
-    #     lsth2 <- sig * sum(w / sig^2)
-    lsth2 <- sum(w / sig)
+    lsth2 <- 0
     
     list(ls=ls, ## saturated log likelihood
          lsth1=lsth, ## first deriv vector w.r.t theta - last element relates to scale, if free

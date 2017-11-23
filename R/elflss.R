@@ -141,7 +141,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
   
   residuals <- function(object, type = c("deviance", "response")) {
     
-    tau <- 1 - get(".qu")
+    tau <- get(".qu")
     theta <- get(".theta")
     lam <- get(".lam")
     
@@ -150,8 +150,8 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     
     type <- match.arg(type)
     
-    # raw residuals  
-    rsd <- object$y - sig * lam * ( digamma(lam*tau) - digamma(lam*(1-tau)) ) - mu ####### XXX #######
+    # Raw residuals: y - E(y)
+    rsd <- object$y - sig * lam * ( digamma(lam*(1-tau)) - digamma(lam*tau) ) - mu
     
     if (type=="response"){ 
       return(rsd)
@@ -164,9 +164,9 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       dl <- dlogis(z-mu, 0, lam*sig)
       pl <- plogis(z-mu, 0, lam*sig)
       
-      l <- tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) )
+      l <- (1-tau) * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*(1-tau), lam*tau) )
       
-      ls <- tau*lam*log(tau) + lam*(1-tau)*log1p(-tau) - log(lam * sig * beta(lam*tau, lam*(1-tau)))
+      ls <- (1-tau)*lam*log1p(-tau) + lam*tau*log(tau) - log(lam * sig * beta(lam*(1-tau), lam*tau))
       
       rsd <- pmax(0, 2*(ls - l))
       
@@ -182,7 +182,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     ##        2 - diagonal of first deriv of Hess
     ##        3 - first deriv of Hess
     ##        4 - everything.
-    tau <- 1 - get(".qu")
+    tau <- get(".qu")
     theta <- get(".theta")
     lam <- get(".lam")
     
@@ -203,15 +203,15 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     dl <- dlogis(z-mu, 0, lam*sig)
     pl <- plogis(z-mu, 0, lam*sig)
     
-    l <- drop(crossprod(wt, tau * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*tau, (1-tau)*lam) ) ))
+    l <- drop(crossprod(wt, (1-tau) * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*(1-tau), lam*tau) ) ))
     
     if (deriv>0) {
       
       dl <- dlogis(y, mu, lam*sig)
       pl <- plogis(y, mu, lam*sig)
       
-      l1[ , 1] <- wt * (pl - tau) / sig
-      l1[ , 2] <- wt * (z * (pl - tau) - 1) / sig  
+      l1[ , 1] <- wt * (pl - 1 + tau) / sig
+      l1[ , 2] <- wt * (z * (pl - 1 + tau) - 1) / sig  
       
       ## the second derivatives
       
@@ -219,8 +219,8 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       
       ## order mm,ms,ss
       l2[ , 1] <- wt * (- dl / sig)
-      l2[ , 2] <- wt * (- ((y-mu)*dl + pl - tau) / sig^2)
-      l2[ , 3] <- wt * (2*z*(tau - pl - 0.5 * (y-mu)*dl) + 1)/sig^2
+      l2[ , 2] <- wt * (- ((y-mu)*dl + pl - 1 + tau) / sig^2)
+      l2[ , 3] <- wt * (2*z*(1 - tau - pl - 0.5 * (y-mu)*dl) + 1)/sig^2
       
       ## need some link derivatives for derivative transform
       ig1 <- cbind(family$linfo[[1]]$mu.eta(eta), family$linfo[[2]]$mu.eta(eta1))
@@ -239,7 +239,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       l3 <- matrix(0,n,4) 
       l3[ , 1] <- wt * der$D2 / (lam^2 * sig^3)
       l3[ , 2] <- wt * (zl*der$D2 + 2*der$D1) / (lam * sig^3)
-      l3[ , 3] <- wt * (2*(der$D0-tau) + 4*zl*der$D1 + zl^2*der$D2) / (sig^3)
+      l3[ , 3] <- wt * (2*(der$D0-1+tau) + 4*zl*der$D1 + zl^2*der$D2) / (sig^3)
       l3[ , 4] <- wt * (-  3*l2[ , 3]/sig + lam*zl^2/sig^3 * (3*der$D1 + zl*der$D2 + 1/(lam*zl^2)))
       
       g3 <- cbind(family$linfo[[1]]$d3link(mu), family$linfo[[2]]$d3link(sig))
