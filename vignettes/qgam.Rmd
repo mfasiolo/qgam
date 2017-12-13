@@ -1,16 +1,19 @@
-<!--
-%\VignetteEngine{knitr::docco_linear}
-%\VignetteIndexEntry{qgam_vignette}
--->
-  
+
+---
+title: "qgam: quantile non-parametric additive models"
+author: "Matteo Fasiolo, Simon N. Wood, Yannig Goude, and Raphael Nedellec"
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{qgam_vignette}
+  %\VignetteEncoding{UTF-8}
+---
+
 ```{r setup, include=FALSE}
 library(knitr)
 opts_chunk$set(out.extra='style="display:block; margin: auto"', fig.align="center", tidy=FALSE)
 ```
 
-**qgam**: quantile non-parametric additive models
-=======================
-  
 This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://arxiv.org/abs/1707.03307).
 
 The main fitting functions are:
