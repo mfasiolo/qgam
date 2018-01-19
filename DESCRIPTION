@@ -21,6 +21,7 @@ Imports:
 Suggests:
     knitr,
     MASS, 
-    RhpcBLASctl
+    RhpcBLASctl, 
+    testthat
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
