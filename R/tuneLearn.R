@@ -85,8 +85,8 @@
 #' lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)                        
 #'
 tuneLearn <- function(form, data, lsig, qu, err = 0.05, 
-                       multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-                       control = list(), argGam = NULL)
+                      multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
+                      control = list(), argGam = NULL)
 { 
   if( length(qu) > 1 ) stop("length(qu) > 1, but this method works only for scalar qu")
   
@@ -104,20 +104,13 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
   
   if( !(ctrl$vtype%in%c("m", "b")) ) stop("control$vtype should be either \"m\" or \"b\" ")
-  if( !(ctrl$loss%in%c("cal", "pin")) ) stop("control$loss should be either \"cal\" or \"pin\" ")
+  if( !(ctrl$loss%in%c("calFast", "cal", "pin")) ) stop("control$loss should be either \"cal\", \"pin\" or \"calFast\" ")
   if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
   if( (ctrl$loss=="cal") && (ctrl$sam=="kfold")  ) stop("You can't use control$sam == \"kfold\" when ctrl$loss==\"cal\" ")
   
   n <- nrow(data)
   nt <- length(lsig)
-  
-  if( ctrl$sam == "boot" ){ # Create weights for K boostrap dataset OR...
-    wb <- lapply(1:ctrl[["K"]], function(nouse) tabulate(sample(1:n, n, replace = TRUE), n))
-  } else { # ... OR for K training sets for CV 
-    tmp <- sample(rep(1:ctrl[["K"]], length.out = n), n, replace = FALSE)
-    wb <- lapply(1:ctrl[["K"]], function(ii) tabulate(which(tmp != ii), n)) 
-  }
-  
+
   # Gaussian fit, used for initializations 
   # NB Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(form) ) {
@@ -133,183 +126,35 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     initM <- list("start" = NULL, "in.out" = NULL) # Have no cluse
   }  
   
-  # Create gam object for full data fits
-  mainObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, fit = FALSE), argGam))
+  # For each value of 'lsig' fit on full data
+  main <- .tuneLearnFullFits(lsig = lsig, form = form, fam = fam, qu = qu, err = err,
+                             ctrl = ctrl, data = data, argGam = argGam, gausFit = gausFit, 
+                             varHat = varHat, initM = initM)
   
-  # Store degrees of freedom for each value of lsig
-  tmp <- pen.edf(gausFit)
-  if( length(tmp) )
-  {
-    edfStore <- matrix(NA, nt, length(tmp) + 1)
-    colnames(edfStore) <- c("lsig", names( tmp ))
-  } else {
-    edfStore <- NULL
-  } 
+  # Get score for each value of 'lsig'
+  outLoss <- if( ctrl$loss == "calFast" ){ # Fast calibration (loss already calculated) OR ...
+    sapply(main[["store"]], "[[", "loss")
+  } else { # ... bootstrapping or cross-validation
+    .tuneLearnBootstrapping(lsig = lsig, form = form, fam = fam, qu = qu, ctrl = ctrl, 
+                            data = data, store = main[["store"]], pMat = main[["pMat"]], 
+                            argGam = argGam, multicore = multicore, cluster = cluster, 
+                            ncores = ncores, paropts = paropts)
+  }
+  names( outLoss ) <- lsig
   
-  # Vector indicating convergence problems
-  convProb <- rep(FALSE, nt)
+  # convProb indicates whether there have been convergence problems during smoothing parameter estimation
+  convProb <- sapply(main[["store"]], "[[", "convProb")
   names(convProb) <- lsig
-  
-  ############## START FITTING ON FULL DATA
-  # FULL data fits, used to estimate the smoothing parameters 
-  mainFit <- vector("list", nt)
-  for( ii in 1:nt ) # START lsigma loop, from smallest to largest (because when lsig is large the smooth params diverge)
-  {
-    mainObj$family$putLam( err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig[ii])) )
-    mainObj$family$putTheta( lsig[ii] )
     
-    withCallingHandlers({
-      fit <- do.call("gam", c(list("G" = mainObj, "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam)) 
-    }, warning = function(w) {
-      if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
-          length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
-      {
-        message( paste("log(sigma) = ", round(lsig[ii], 3), " : outer Newton did not converge fully.", sep = "") )
-        convProb[ii] <<- TRUE
-        invokeRestart("muffleWarning")
-      }
-    })
-
-    if( !is.null(edfStore) ) { edfStore[ii, ] <- c(lsig[ii], pen.edf(fit)) }
-    
-    # Create prediction matrix (only in the first iteration)
-    if( ii == 1 ){
-      pMat <- predict.gam(fit, type = "lpmatrix") 
-      lpi <- attr(pMat, "lpi")
-      if( !is.null(lpi) ){ 
-        pMat <- pMat[ , lpi[[1]]] # "lpi" attribute lost here, re-inserted in next line 
-        attr(pMat, "lpi") <- lpi }
-    }
-    
-    sdev <- NULL 
-    if(ctrl$loss == "cal" && ctrl$vtype == "m"){
-      Vp <- fit$Vp
-      # In the gamlss case, we are interested only in the calibrating the location mode
-      if( !is.null(lpi) ){  Vp <- fit$Vp[lpi[[1]], lpi[[1]]]  }
-      sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
-    }
-    
-    initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
-    
-    # Main fit will be used when fitting the bootstrap datasets
-    mainFit[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "lam" = fit$family$getLam(), "init" = initM$start, "sdev" = sdev)
-  } ############## END FITTING ON FULL DATA
-  
-  # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, 
-                                "sp" = if(length(mainFit[[1]]$sp)){mainFit[[1]]$sp}else{NULL}, fit = FALSE), argGam))
-  
-  # Preparing bootstrap object for gam.fit3
-  bObj <- .prepBootObj(obj = bObj, eps = ctrl$epsB, control = argGam$control)
-  
-  # Internal function that fits the bootstrapped datasets and returns standardized deviations from full data fit. To be run in parallel.
-  # GLOBALS: lsig, ctrl, mainFit, pMat, bObj, argGam
-  .getBootDev <- function(.wb)
-  {   # # # # # # # # # .getBootDev START # # # # # # # # #
-    y <- bObj$y 
-    ns <- length(lsig); n  <- length(y)
-    
-    # Number of test observations
-    nt <- ifelse(ctrl$loss == "cal", n, sum(!.wb)) 
-    
-    # Creating boot weights from boot indexes 
-    bObj$w <- .wb
-    
-    lpi <- attr(pMat, "lpi")
-    glss <- inherits(bObj$family, "general.family")
-    
-    init <- NULL
-    .z <- vector("list", ns)
-    for( ii in ns:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
-    {   
-      # In the gamlss case lambda is a vector, and we have to take only those values that are in the boostrapped dataset.
-      lam <- mainFit[[ii]]$lam
-      
-      bObj$lsp0 <- log( mainFit[[ii]]$sp )
-      bObj$family$putLam( lam )
-      bObj$family$putTheta( lsig[ii] )
-      
-      init <- if(is.null(init)){ list(mainFit[[ii]]$init) } else { list(init, mainFit[[ii]]$init) }
-      
-      if( glss ){
-        init <- lapply(init, function(inp) Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
-        fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
-                          offset=bObj$offset, family=bObj$family, control=bObj$control, 
-                          Mp=bObj$Mp, start=init, needVb=(ctrl$loss=="cal" && ctrl$vtype=="b"))
-        # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
-        init <- betas <- Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
-        betas <- betas[lpi[[1]]] 
-      } else {
-        bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
-        fit <- .egamFit(x=bObj$X, y=bObj$y, sp=as.matrix(bObj$lsp0), Eb=bObj$Eb, UrS=bObj$UrS,
-                        offset=bObj$offset, U1=bObj$U1, Mp=bObj$Mp, family = bObj$family, weights=bObj$w,
-                        control=bObj$control, null.coef=bObj$null.coef, 
-                        start=init, needVb=(ctrl$loss == "cal" && ctrl$vtype == "b"))
-        init <- betas <- fit$coef
-      }
-      
-      mu <- pMat %*% betas
-      
-      if( ctrl$loss == "cal" ){ # (1) Return standardized deviations from full data fit OR ... 
-        if( ctrl$vtype == "b" ){ # (2) Use variance of bootstrap fit OR ...
-          Vp <- .getVp(fit, bObj, bObj$lsp0, lpi)
-          sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
-        } else { # (2)  ... variance of the main fit
-          sdev <- mainFit[[ii]]$sdev
-        }
-        .z[[ii]] <- drop((mu - as.matrix(mainFit[[ii]]$fit)[ , 1]) / sdev)
-      } else { # (1) ... out of sample observations minus their fitted values 
-        .z[[ii]] <- drop(y - mu)[ !.wb ]
-      }
-    }
-    .z <- do.call("rbind", .z)
-    return( .z )
-  }  # # # # # # # # # .getBootDev END # # # # # # # # #
-  
-  if( multicore ){ 
-    # Making sure "qgam" is loaded on cluser
-    paropts[[".packages"]] <- unique( c("qgam", paropts[[".packages"]]) )
-    
-    tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
-    cluster <- tmp$cluster
-    ncores <- tmp$ncores
-    clusterCreated <- tmp$clusterCreated
-    registerDoParallel(cluster)
-    
-    # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
-    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "mainFit", "argGam", ".getVp", ".egamFit", ".gamlssFit"), 
-                  envir = environment())
-    environment(.getBootDev) <- .GlobalEnv
-  }
-  
-  # Loop over bootstrap datasets to get standardized deviations from full data fit
-  withCallingHandlers({
-    z <- llply( .data = wb, 
-                .fun = .getBootDev,
-                .parallel = multicore,
-                .progress = ctrl[["progress"]],
-                .inform = ctrl[["verbose"]],
-                .paropts = paropts)
-  }, warning = function(w) {
-    # There is a bug in plyr concerning a useless warning about "..."
-    if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
-      invokeRestart("muffleWarning")
-  })
-  
-  # Get stardardized deviations and ... 
-  z <- do.call("cbind", z)
-  if( ctrl$loss == "cal"){ # ... calculate Anderson-Darling normality statistic OR ...
-    outLoss <- apply(z, 1, function(.x) .adTest(as.vector(.x)))
-  } else { # ... pinball loss
-    outLoss <- apply(z, 1, function(.x) .checkloss(as.vector(.x), 0, qu = qu))
-  }
-  names(outLoss) <- lsig
-  
-  # Close the cluster if it was opened inside this function
-  if(multicore && clusterCreated) stopCluster(cluster)
-  
-  out <- list("lsig" = lsig[which.min(outLoss)], "loss" = outLoss, "edf" = edfStore, "convProb" = convProb)
+  out <- list("lsig" = lsig[which.min(outLoss)], "loss" = outLoss, 
+              "edf" = main[["edfStore"]], "convProb" = convProb)
   attr(out, "class") <- "learn"
   
   return( out )
 }
+
+
+
+
+
+

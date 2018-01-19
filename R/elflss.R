@@ -199,10 +199,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
     l1 <- matrix(0,n,2)
     
     z <- (y - mu) / sig
-    
-    dl <- dlogis(z-mu, 0, lam*sig)
-    pl <- plogis(z-mu, 0, lam*sig)
-    
+
     l <- drop(crossprod(wt, (1-tau) * z - lam * log1pexp( z / lam ) - log( sig * lam * beta(lam*(1-tau), lam*tau) ) ))
     
     if (deriv>0) {
@@ -225,6 +222,7 @@ elflss <- function(link = list("identity", "log"), qu, lam, theta, remInter = TR
       ## need some link derivatives for derivative transform
       ig1 <- cbind(family$linfo[[1]]$mu.eta(eta), family$linfo[[2]]$mu.eta(eta1))
       g2 <- cbind(family$linfo[[1]]$d2link(mu), family$linfo[[2]]$d2link(sig))
+      
     }
     
     l3 <- l4 <- g3 <- g4 <- 0 ## defaults

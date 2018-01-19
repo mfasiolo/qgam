@@ -26,7 +26,7 @@
 #' 
 #' # Fit median using elf directly: FAST BUT NOT RECOMMENDED
 #' fit <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), 
-#'            family = elf(theta = 0, lam = 0.5, qu = 0.5), data = dat)
+#'            family = elf(lam = 0.5, qu = 0.5), data = dat)
 #' plot(fit, scale = FALSE, pages = 1)     
 #' 
 #' # Using qgam: RECOMMENDED
@@ -174,7 +174,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     r
   }
   
-  aic <- function(y, mu, theta=NULL, wt, dev) { ###### XXX only likelihood, no df? 
+  aic <- function(y, mu, theta=NULL, wt, dev) { 
     if (is.null(theta)) theta <- get(".Theta")
     sig <- exp(theta)
     
@@ -188,7 +188,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
     2 * sum(term * wt)
   }
   
-  ls <- function(y, w, theta, scale) { ##### XXX n is number of observations?
+  ls <- function(y, w, theta, scale) {
     tau <- get(".qu")
     lam <- get(".lam")
     ## the log saturated likelihood function.
@@ -207,7 +207,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   }
   
   initialize <- expression({
-
+    
     mustart <- quantile(y, family$getQu()) + y * 0 # this ---> y <--- is very bad idea
     
   })

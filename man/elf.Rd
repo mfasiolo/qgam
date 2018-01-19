@@ -35,7 +35,7 @@ dat <- gamSim(1,n=400,dist="normal",scale=2)
 
 # Fit median using elf directly: FAST BUT NOT RECOMMENDED
 fit <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), 
-           family = elf(theta = 0, lam = 0.5, qu = 0.5), data = dat)
+           family = elf(lam = 0.5, qu = 0.5), data = dat)
 plot(fit, scale = FALSE, pages = 1)     
 
 # Using qgam: RECOMMENDED
