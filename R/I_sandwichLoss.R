@@ -10,18 +10,25 @@
 # OUTPUT
 # - a scalar indicating the loss
 #
-.sandwichLoss <- function(mFit, X, XFull, sdev){
+.sandwichLoss <- function(mFit, X, XFull, sdev, reparSl){
   
   lpi <- attr(X, "lpi")
 
   if( !is.null(lpi) ){ # GAMLSS version OR ...
     
-    stop("You can't use loss = calFast when fitting gamlss quantile models")
+    if( is.null(mFit$rp) ) { stop("mFit$rp is NULL, but a re-parametrization list is needed")  }
     
-    # Get penalty matrix
+    mFit$Sl <- reparSl # Add reparametrization list
+
+    # Extract observed Fisher information and invert the transformations
     OFI <- - mFit$lbb
-    P <- solve(mFit$Vp) - OFI       # Penalty matrix
-    print(eigen(OFI)$value)
+    OFI <- Sl.repara(mFit$rp, OFI, inverse = TRUE)
+    OFI <- Sl.initial.repara(mFit$Sl, OFI, inverse = TRUE, cov = FALSE)
+    
+    # Extract penalty matrix and invert transformations
+    P <- mFit$St
+    P <- Sl.repara(mFit$rp, P, inverse = TRUE)
+    P <- Sl.initial.repara(mFit$Sl, P, inverse = TRUE, cov = FALSE)
     
     # Posterior variance of fitted quantile (mu) 
     varOFI <- sdev ^ 2

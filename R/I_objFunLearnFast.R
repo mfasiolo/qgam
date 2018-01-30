@@ -38,7 +38,7 @@
   
   if(ctrl$loss == "calFast"){ # Fast calibration OR ...
     
-    outLoss <- .sandwichLoss(mFit = mFit, X = pMat, XFull = pMatFull, sdev = sdev)
+    outLoss <- .sandwichLoss(mFit = mFit, X = pMat, XFull = pMatFull, sdev = sdev, reparSl = bObj$Sl)
     initB <- NULL
     
   } else { # ... bootstrapping or cross-validation
