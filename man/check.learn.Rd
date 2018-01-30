@@ -4,10 +4,13 @@
 \alias{check.learn}
 \title{Visual checks for the output of tuneLearn()}
 \usage{
-\method{check}{learn}(obj, ...)
+\method{check}{learn}(obj, sel = 1:2, ...)
 }
 \arguments{
 \item{obj}{the output of a call to \code{tuneLearn}.}
+
+\item{sel}{this function produces two plots, set this parameter to 1 to plot only the first, 
+to 2 to plot only the second or leave it to 1:2 to plot both.}
 
 \item{...}{currently not used, here only for compatibility reasons.}
 }
