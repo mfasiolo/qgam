@@ -14,7 +14,7 @@ test_that("tuneLearn_gamlss", {
   names(dataf) <- c("y", "x")
   form <- list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr"))
 
-  QU <- 0.6
+  QU <- 0.9
   lossType <- rep(c("calFast", "cal", "pin"), each = 2)
 
   par(mfrow = c(1, 2))
@@ -34,6 +34,8 @@ test_that("tuneLearn_gamlss", {
       lines(x, tmp$fit[ , 1])
       lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
       lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
+      
+      check(tun, select = 1)
     }
     , NA)
 
@@ -65,6 +67,7 @@ test_that("tuneLearn_egam", {
       
       ylb <- if((ii %% 2) == 0) { paste(lossType[ii], "multicore") } else { lossType[ii] }
       plot(fit, select = 3, ylab = ylb)
+      check(tun, select = 1)
     }
     , NA)
     

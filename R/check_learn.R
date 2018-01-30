@@ -5,6 +5,8 @@
 #'              freedom of each smooth component vary with the learning rate.  
 #'  
 #' @param obj the output of a call to \code{tuneLearn}.
+#' @param sel this function produces two plots, set this parameter to 1 to plot only the first, 
+#'            to 2 to plot only the second or leave it to 1:2 to plot both.
 #' @param ... currently not used, here only for compatibility reasons.
 #' @return It produces several plots. 
 #' @details The first plot shows how the calibrations loss, which we are trying to minimize, varies with the 
@@ -25,15 +27,17 @@
 #'                data=dat, qu = 0.5)
 #' check(b) 
 #'
-check.learn <- function(obj, ...)
+check.learn <- function(obj, sel = 1:2, ...)
 {  
   sig <- as.numeric( names( obj$loss ) )
   
+  if( 1 %in% sel ){
   # readline(prompt = "Press <Enter> to see the next plot...")
   plot(sig, obj$loss, type = "b", ylab = "Calibration Loss", xlab = expression("log(" * sigma * ")"))
   rug(sig[obj$convProb], side = 3, col = 2, lwd = 2)
+  }
   
-  if( !is.null(obj$edf) )
+  if( !is.null(obj$edf) && 2 %in% sel )
   {
     # readline(prompt = "Press <Enter> to see the next plot...")
     nc <- ncol(obj$edf)
