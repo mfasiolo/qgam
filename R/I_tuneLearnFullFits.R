@@ -12,8 +12,12 @@
                                    "data" = data, "fit" = FALSE), 
                               argGam))
   
-  # Create reparametrization list, needed in GAMLSS case
-  reparSl <- if( is.list(form) ) Sl.setup(mainObj)  else NULL
+  # Create reparametrization list for... 
+  repar <- if( is.list(form) ){ # ... GAMLSS case OR...
+    Sl.setup( mainObj )
+  } else { # ... extended GAM case
+    .prepBootObj(obj = mainObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ]
+  } # these are needed for sandwich calibration
   
   # Store degrees of freedom for each value of lsig
   tmp <- pen.edf(gausFit)
@@ -68,7 +72,7 @@
     initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
-      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, reparSl = reparSl), 
+      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, repar = repar), 
                           "convProb" = convProb)
     } else { # Bootstrapping or cross-validation: full data fit will be used when fitting the bootstrap datasets
       store[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "lam" = fit$family$getLam(), 

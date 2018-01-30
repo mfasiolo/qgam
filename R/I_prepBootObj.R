@@ -1,8 +1,17 @@
+###############################################
+# Function that prepares the bootstrapped gamObject for use 
+# with gam.fit4 or gam.fit5. It manly works out the re-parametrization
+# to be used, which does not seem to depend on the smoothing parameters
+# (hence it only needs to be calculated once).
+#
 .prepBootObj <- function(obj, eps, control)
 {
   if( is.null(control) ){ control <- list() }
   ctrl <- do.call("gam.control", control)
-  ctrl$epsilon <- eps
+  
+  # Overwriting default tolerance, useful for using sloppy convergence test on 
+  # bootstrapped fits
+  if( !is.null(eps) ) { ctrl$epsilon <- eps }  
   obj$control <- ctrl
   
   if (inherits(obj$family,"general.family")) {

@@ -204,6 +204,15 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Preparing bootstrap object for gam.fit3
   bObj <- .prepBootObj(obj = bObj, eps = ctrl$epsB, control = argGam$control)
   
+  # Preparing reparametrization list and hide it within mObj. This will be needed by the sandwich calibration
+  if( ctrl$loss == "calFast" ){
+    mObj$hidRepara <- if(is.formula(form)) { 
+      .prepBootObj(obj = mObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ] 
+    } else { 
+      bObj$Sl 
+    } 
+  }
+  
   # Create prediction design matrices for each bootstrap sample or CV fold
   class( mObj ) <- c("gam", "glm", "lm") 
   mObj$coefficients <- rep(0, ncol(mObj$X))  # Needed to fool predict.gam

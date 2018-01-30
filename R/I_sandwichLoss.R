@@ -10,7 +10,7 @@
 # OUTPUT
 # - a scalar indicating the loss
 #
-.sandwichLoss <- function(mFit, X, XFull, sdev, reparSl){
+.sandwichLoss <- function(mFit, X, XFull, sdev, repar){
   
   lpi <- attr(X, "lpi")
 
@@ -18,7 +18,7 @@
     
     if( is.null(mFit$rp) ) { stop("mFit$rp is NULL, but a re-parametrization list is needed")  }
     
-    mFit$Sl <- reparSl # Add reparametrization list
+    mFit$Sl <- repar # Add reparametrization list
 
     # Extract observed Fisher information and invert the transformations
     OFI <- - mFit$lbb
@@ -49,10 +49,10 @@
     
   } else { # Extended GAM version 
     
-    # Get penalty matrix
+    # Working weights, observed Fisher information and penalty matrix
     w <- mFit$working.weights
-    OFI <- t(X) %*% (w * X)    # Observed Fisher information
-    P <- solve(mFit$Vp) - OFI       # Penalty matrix
+    OFI <- t(X) %*% (w * X)
+    P <- .getPenMatrix(q = ncol(X), UrS = repar$UrS, sp = log(mFit$sp), Mp = repar$Mp, U1 = repar$U1)
     
     # Posterior variance of fitted quantile (mu) 
     varOFI <- sdev ^ 2
