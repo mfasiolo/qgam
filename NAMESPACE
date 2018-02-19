@@ -6,7 +6,7 @@ importFrom(doParallel, "registerDoParallel")
 importFrom(parallel, "makeCluster", "stopCluster", "detectCores", "clusterExport", "clusterEvalQ")
 
 importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom", "make.link", 
-                  "dlogis", "plogis", "complete.cases", "na.omit", "quantile", "runif", "cov")
+                  "dlogis", "plogis", "complete.cases", "na.omit", "quantile", "runif", "cov", "plogis")
 importFrom(grDevices, "rgb")
 
 import(mgcv)

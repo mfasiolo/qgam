@@ -17,18 +17,22 @@ intervals.}
 \item{...}{extra arguments to be passed to \code{plot()}}
 }
 \value{
-Simply produces a plot and prints out some diagnostics.
+Simply produces some plots and prints out some diagnostics.
 }
 \description{
 Takes a fitted gam object produced by \code{qgam()} and produces some diagnostic information 
-             about the fitting procedure and results. It is a simplified version of \code{mgcv::gam.check}.
+             about the fitting procedure and results. It is partially based on \code{mgcv::gam.check}.
 }
 \details{
-This function provides a single plot, which shows how the number of responses falling below the fitted
+This function provides two plots. The first shows how the number of responses falling below the fitted
          quantile (y-axis) changes with the fitted quantile (x-axis). To be clear: if the quantile is fixed to, say, 0.5
-         we expect 50\% of the responses to fall below the fit. See \code{?cqcheck()} for details. 
-         The function also provide some convergence diagnostics (regarding the optimization), which are the same as in
-         \code{mgcv::gam.check}. It reports also the maximum (k') and the selected degrees of freedom of each smooth term.
+         we expect 50\% of the responses to fall below the fit. See \code{?cqcheck()} for details. The second plot related
+         to \code{|F(hat(mu)) - F(mu0)|}, which is the absolute bias attributable to the fact that qgam is using 
+         a smoothed version of the pinball-loss. The absolute bias is evaluated at each observation, and an histogram
+         is produced. See Fasiolo et al. (2017) for details. The function also prints out the average absolute bias,
+         and the proportion of observations lying below the regression line. It also provides some convergence 
+         diagnostics (regarding the optimization), which are the same as in \code{mgcv::gam.check}. 
+         It reports also the maximum (k') and the selected degrees of freedom of each smooth term.
 }
 \examples{
 library(qgam)
@@ -38,6 +42,10 @@ b<-qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.5)
 plot(b, pages=1)
 check.qgam(b, pch=19, cex=.3)
 
+}
+\references{
+Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
+            Available at \url{https://arxiv.org/abs/1707.03307}.
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>, Simon N. Wood.
