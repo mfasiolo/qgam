@@ -48,7 +48,7 @@ check.qgam <- function(obj,
   
   dat <- obj$model
   form <- if( is.list(obj$formula) ) { obj$formula[[1]] } else { obj$formula }
-  res <- dat[[ form[[2]] ]] - as.matrix(fit$fitted.values)[ , 1]
+  res <- dat[[ form[[2]] ]] - as.matrix(obj$fitted.values)[ , 1]
   form[[2]] <- as.symbol( "bias" )
   
   dat$bias <- plogis(res, 0, sig*lam) - as.numeric(res > 0)
