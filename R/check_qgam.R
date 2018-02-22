@@ -43,8 +43,10 @@ check.qgam <- function(obj,
   
   ## Checking bias induced by having smoothed the loss
   # Here we are estimating E( Phi(y, mu, lam*sig) - I(y > mu) | x ) using a Gaussian GAM
-  lam <- obj$family$getLam()
+  co <- obj$family$getCo()
   sig <- exp( obj$family$getTheta() )
+  if( is.list(obj$formula) ) { sig <- sig * obj$fitted.values[ , 2] }
+  lam <- co / sig
   
   dat <- obj$model
   form <- if( is.list(obj$formula) ) { obj$formula[[1]] } else { obj$formula }

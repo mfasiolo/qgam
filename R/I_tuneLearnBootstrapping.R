@@ -15,7 +15,7 @@
   }
   
   # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), "data" = data, 
+  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, co = NA, theta = NA, link = ctrl$link), "data" = data, 
                                 "sp" = if(length(store[[1]]$sp)){store[[1]]$sp}else{NULL}, fit = FALSE), argGam))
   
   # Preparing bootstrap object for gam.fit3
@@ -41,11 +41,11 @@
     .z <- vector("list", ns)
     for( ii in ns:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
     {   
-      # In the gamlss case lambda is a vector, and we have to take only those values that are in the boostrapped dataset.
-      lam <- store[[ii]]$lam
+      # In the gamlss case 'co' is a vector, and we have to take only those values that are in the boostrapped dataset.
+      co <- store[[ii]]$co
       
       bObj$lsp0 <- log( store[[ii]]$sp )
-      bObj$family$putLam( lam )
+      bObj$family$putCo( co )
       bObj$family$putTheta( lsig[ii] )
       
       init <- if(is.null(init)){ list(store[[ii]]$init) } else { list(init, store[[ii]]$init) }
@@ -118,13 +118,14 @@
   .bindFun <- if( ctrl$loss == "cal" ) { "rbind" } else { "c" }
   z <- lapply(1:nt, function(.ii) do.call(.bindFun, lapply(z, function(.x) .x[[.ii]])))
   
-  if( ctrl$loss == "cal"){ # ... calculate Anderson-Darling normality statistic OR ...
-    # E(z^2) = var(z) + E(z)^2 (var + bias)
-    # outLoss <- sapply(z, function(.x) mean( (.colVars(.x) - 1)^2  + colMeans(.x)^2 ) )
+  if( ctrl$loss == "cal"){ # ... calculate KL distance OR ...
+    # KL distance for explanations see [*] below
     outLoss <- sapply(z, function(.x){ 
       .v <- .colVars(.x)
-      return( mean(.v + colMeans(.x)^2 - log(.v)) )
+      return( mean( sqrt(.v + colMeans(.x)^2 - log(.v)) ) )
     })
+    # E(z^2) = var(z) + E(z)^2 (var + bias)
+    #outLoss <- sapply(z, function(.x) mean( (.colVars(.x) - 1)^2  + colMeans(.x)^2 ) )
     #outLoss <- sapply(z, function(.x) mean( colMeans(.x)^2 ) )  
     #outLoss <- sapply(z, function(.x) mean( (colMeans(.x^2) - 1)^2 ) ) 
     #outLoss <- sapply(z, function(.x) mean( apply(.x, 2, .adTest) ) ) # .adTest(as.vector(.x)))
@@ -139,3 +140,23 @@
   return( outLoss )
   
 }
+
+
+##### [*] Code showing that KL distance is invariant to standardization
+# mu1 <- rnorm(1)
+# mu2 <- rnorm(1)
+# v1 <- runif(1, 1, 2)
+# v2 <- runif(1, 1, 2)
+# 
+# x <- rnorm(10000, mu1, sqrt(v1))
+# 
+# # KL distance between x ~ N(mu1, V1) and z ~ N(mu2, V2)
+# v1/v2 + (mu1 - mu2)^2 / v2 + log(v2/v1)
+# 
+# # Empirical estimate of KL distance
+# var(x)/v2 + (mean(x) - mu2)^2 / v2 + log(v2/var(x))
+# 
+# # Normalizing x using mu2 and V2, assume y is now N(0, 1)
+# # and recalculate KL distance: the result must be the same
+# y <- (x - mu2) / sqrt(v2)
+# var(y) + (mean(y))^2 + log(1/var(y))

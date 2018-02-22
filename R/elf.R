@@ -10,7 +10,7 @@
 #' @param theta a scalar representing the log-scale log(sigma). 
 #' @param link the link function between the linear predictor and the quantile location.
 #' @param qu parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.
-#' @param lam parameter lambda of the ELF density, it must be positive. See Fasiolo et al. (2017) for details.
+#' @param co positive constant used to determine parameter lambda of the ELF density (lambda = co / sigma).
 #' @return An object inheriting from mgcv's class \code{extended.family}.
 #' @details This function is meant for internal use only.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com> and Simon N. Wood. 
@@ -26,7 +26,7 @@
 #' 
 #' # Fit median using elf directly: FAST BUT NOT RECOMMENDED
 #' fit <- gam(y~s(x0)+s(x1)+s(x2)+s(x3), 
-#'            family = elf(lam = 0.5, qu = 0.5), data = dat)
+#'            family = elf(co = 0.1, qu = 0.5), data = dat)
 #' plot(fit, scale = FALSE, pages = 1)     
 #' 
 #' # Using qgam: RECOMMENDED
@@ -69,7 +69,7 @@
 ## predict - optional function for predicting from model, called by predict.gam.
 ## family$data - optional list storing any family specific data for use, e.g. in predict
 ##               function.
-elf <- function (theta = NULL, link = "identity", qu, lam) { 
+elf <- function (theta = NULL, link = "identity", qu, co) { 
   
   # Some checks
   if( !is.na(qu) && (findInterval(qu, c(0, 1) )!=1) ) stop("qu should be in (0, 1)")
@@ -108,9 +108,9 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   getQu <- function( ) get(".qu")
   putQu <- function(qu) assign(".qu", qu, envir=environment(sys.function()))
   
-  assign(".lam", lam, envir = env)
-  getLam <- function( ) get(".lam")
-  putLam <- function(lam) assign(".lam", lam, envir=environment(sys.function()))
+  assign(".co", co, envir = env)
+  getCo <- function( ) get(".co")
+  putCo <- function(co) assign(".co", co, envir=environment(sys.function()))
   
   # variance <- function(mu) exp(get(".Theta"))  ##### XXX ##### Necessary?
   
@@ -119,9 +119,10 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   dev.resids <- function(y, mu, wt, theta=NULL) {        ##### XXX #####
     if( is.null(theta) ) theta <- get(".Theta")
     tau <- get(".qu")
-    lam <- get(".lam")
+    co <- get(".co")
     
     sig <- exp(theta)
+    lam <- co / sig
     
     z <- (y - drop(mu)) / sig
     
@@ -133,13 +134,15 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   Dd <- function(y, mu, theta, wt, level=0) {
     
     tau <- get(".qu")
-    lam <- get(".lam")
+    co <- get(".co")
     mu <- drop(mu)
     
     ## derivatives of the deviance...
     sig <- exp(theta)
+    lam <- co / sig
     
     z <- (y - mu) / sig
+    
     
     dl <- dlogis(y-mu, 0, lam*sig)
     pl <- plogis(y-mu, 0, lam*sig)
@@ -177,9 +180,9 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   aic <- function(y, mu, theta=NULL, wt, dev) { 
     if (is.null(theta)) theta <- get(".Theta")
     sig <- exp(theta)
-    
     tau <- get(".qu")
-    lam <- get(".lam")
+    co <- get(".co")
+    lam <- co / sig
     
     z <- (y - drop(mu)) / sig
     
@@ -190,10 +193,11 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   
   ls <- function(y, w, theta, scale) {
     tau <- get(".qu")
-    lam <- get(".lam")
-    ## the log saturated likelihood function.
+    co <- get(".co")
     sig <- exp(theta)
+    lam <- co / sig
     
+    ## the log saturated likelihood function.
     ls <- sum( w * ((1-tau)*lam*log1p(-tau) + lam*tau*log(tau) - log(lam * sig * beta(lam*(1-tau), lam*tau))) )
     
     #lsth <- - sig * sum(w / sig)
@@ -249,7 +253,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
   #  environment(rd)<- environment(qf) <- environment(variance) <- 
   environment(dev.resids) <- environment(ls) <- environment(aic) <- environment(Dd) <- 
     environment(getTheta) <- 
-    environment(putTheta) <- environment(putLam) <- environment(getLam) <-
+    environment(putTheta) <- environment(putCo) <- environment(getCo) <-
     environment(putQu) <- environment(getQu) <- environment(get.null.coef) <- env
   
   structure(list(family = "elf", link = linktemp, linkfun = stats$linkfun,
@@ -261,7 +265,7 @@ elf <- function (theta = NULL, link = "identity", qu, lam) {
                  validmu = validmu, valideta = stats$valideta, n.theta=n.theta, 
                  ini.theta = iniTheta, putTheta=putTheta,getTheta=getTheta, 
                  putQu=putQu, getQu=getQu, 
-                 putLam=putLam,getLam=getLam, get.null.coef=get.null.coef,
+                 putCo=putCo,getCo=getCo, get.null.coef=get.null.coef,
                  use.wz=TRUE
                  #, rd=rd,qf=qf
   ),

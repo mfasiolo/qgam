@@ -8,7 +8,7 @@
   
   # Create gam object for full data fits
   mainObj <- do.call("gam", c(list("formula" = form, 
-                                   "family" = get(fam)(qu = qu, lam = NA, theta = NA, link = ctrl$link), 
+                                   "family" = get(fam)(qu = qu, co = NA, theta = NA, link = ctrl$link), 
                                    "data" = data, "fit" = FALSE), 
                               argGam))
   
@@ -33,7 +33,7 @@
   store <- vector("list", nt)
   for( ii in 1:nt ) # START lsigma loop, from smallest to largest (because when lsig is large the smooth params diverge)
   {
-    mainObj$family$putLam( err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig[ii])) )
+    mainObj$family$putCo( err * sqrt(2*pi*varHat) / (2*log(2)) )
     mainObj$family$putTheta( lsig[ii] )
     
     convProb <- FALSE # Variable indicating convergence problems
@@ -75,7 +75,7 @@
       store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, repar = repar), 
                           "convProb" = convProb)
     } else { # Bootstrapping or cross-validation: full data fit will be used when fitting the bootstrap datasets
-      store[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "lam" = fit$family$getLam(), 
+      store[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "co" = fit$family$getCo(), 
                           "init" = initM$start, "sdev" = sdev, "weights" = fit$working.weights, 
                           "res" = fit$residuals, "convProb" = convProb)
     }

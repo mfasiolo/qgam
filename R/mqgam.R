@@ -147,7 +147,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   out[["fit"]][[1]][["smooth"]] <- NULL
   
 #   out[["qu"]] <- qu
-#   out[["lambda"]] <- lam
+#   out[["co"]] <- co
 #   out[["lsig"]] <- lsig
   
   return( out )

@@ -10,9 +10,12 @@
 # OUTPUT
 # - a scalar indicating the loss
 #
-.sandwichLoss <- function(mFit, X, XFull, sdev, repar){
+.sandwichLoss <- function(mFit, X, XFull, sdev, repar, alpha = NULL, VSim = NULL){
   
   lpi <- attr(X, "lpi")
+  
+  # Posterior variance of fitted quantile (mu) 
+  varOFI <- sdev ^ 2
 
   if( !is.null(lpi) ){ # GAMLSS version OR ...
     
@@ -30,23 +33,9 @@
     P <- Sl.repara(mFit$rp, P, inverse = TRUE)
     P <- Sl.initial.repara(mFit$Sl, P, inverse = TRUE, cov = FALSE)
     
-    # Posterior variance of fitted quantile (mu) 
-    varOFI <- sdev ^ 2
-    
     # Calculate variance of the score
     grad <- .llkGrads(gObj = mFit, X = XFull, jj = lpi)
-    
-    V <- cov( grad ) * (nrow(X) - 1)         # Variance of the score
-    S <- solve( OFI %*% solve(V, OFI) + P )[lpi[[1]], lpi[[1]]]  # 'Sandwich' posterior covariance
 
-    # Posterior variance of mu using sandwich
-    varSand <- rowSums((X %*% S) * X)
-    
-    bias <- numeric( nrow(X) ) * 0
-    
-    # Average distance KL(sand_i, post_i)
-    outLoss <- mean( (varSand/varOFI + bias^2/varOFI + log(varOFI/varSand)) )
-    
   } else { # Extended GAM version 
     
     # Working weights, observed Fisher information and penalty matrix
@@ -54,26 +43,31 @@
     OFI <- t(X) %*% (w * X)
     P <- .getPenMatrix(q = ncol(X), UrS = repar$UrS, sp = log(mFit$sp), Mp = repar$Mp, U1 = repar$U1)
     
-    # Posterior variance of fitted quantile (mu) 
-    varOFI <- sdev ^ 2
-    
-    # Calculate variance of the score
-    r <- mFit$residuals
-    grad <- X * drop(w * r)
-    V <- cov( grad ) * (length(w) - 1)
-    S <- solve( OFI %*% solve(V, OFI) + P )  # 'Sandwich' posterior covariance
-    
-    # Posterior variance of mu using sandwich
-    varSand <- rowSums((X %*% S) * X)
-    
-    bias <- numeric( length(w) ) * 0
-    
-    # Average distance KL(sand_i, post_i)
-    outLoss <- mean( (varSand/varOFI + bias^2/varOFI + log(varOFI/varSand)) )
-    
-    initB <- NULL
-    
   }
+  
+  # Calculate variance of the score
+  grad <- .llkGrads(gObj = mFit, X = XFull, jj = lpi)
+  
+  # Variance of the score
+  V <- cov( grad ) 
+  if( !is.null(alpha) ){
+    V <- alpha * V + (1-alpha) * VSim
+  }
+  V <- V * nrow(X) 
+  
+  # 'Sandwich' posterior covariance
+  S <- solve( OFI %*% solve(V, OFI) + P )  
+  if( !is.null(lpi) ){
+    S <- S[lpi[[1]], lpi[[1]]]
+  } 
+  
+  # Posterior variance of mu using sandwich
+  varSand <- rowSums((X %*% S) * X)
+  
+  bias <- numeric( nrow(X) ) * 0
+  
+  # Average distance KL(sand_i, post_i)
+  outLoss <- mean( sqrt(varSand/varOFI + bias^2/varOFI + log(varOFI/varSand)) )
   
   return( outLoss )
   

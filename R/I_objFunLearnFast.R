@@ -6,11 +6,11 @@
 { 
   if(ctrl$progress){ cat(".")}
   
-  lam <- err * sqrt(2*pi*varHat) / (2*log(2)*exp(lsig))
+  co <- err * sqrt(2*pi*varHat) / (2*log(2))
   lpi <- attr(pMat, "lpi")
   
   mObj$family$putQu( qu )
-  mObj$family$putLam( lam )
+  mObj$family$putCo( co )
   mObj$family$putTheta( lsig )
   
   # Full data fit
@@ -47,7 +47,7 @@
     # Set 1: bObj, pMat, wb, argGam, ctrl    (Exported by tuneLearnFast)
     # If multicore=F, .funToApply() will look for these inside the objFun call. That's why objFun need them as arguments.
     # If multicore=T, .funToApply() will look for them in .GlobalEnv. That's why we export them to cluster nodes in tuneLearnFast.
-    # Set 2:  initB, initM, mMU, lam, lsig, qu, sdev   (Exported by .tuneLearnFast)
+    # Set 2:  initB, initM, mMU, co, lsig, qu, sdev   (Exported by .tuneLearnFast)
     # As before but, if multicore=T, these are exported directly by objFun because they change from one call of objFun to another.
     .funToApply <- function(ind)
     {
@@ -56,7 +56,7 @@
       
       bObj$lsp0 <- log( initM$in.out$sp )
       bObj$family$putQu( qu )
-      bObj$family$putLam( lam )
+      bObj$family$putCo( co )
       bObj$family$putTheta( lsig )
       
       z <- init <- vector("list", length(ind))
@@ -109,7 +109,7 @@
     if( !is.null(cluster) ){
       nc <- length(cluster)
       environment(.funToApply) <- .GlobalEnv
-      clusterExport(cluster, c("initB", "initM", "mMU", "lam", "lsig", "qu", "sdev"), envir = environment())
+      clusterExport(cluster, c("initB", "initM", "mMU", "co", "lsig", "qu", "sdev"), envir = environment())
     } else {
       nc <- 1
     }

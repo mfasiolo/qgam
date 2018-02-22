@@ -194,11 +194,11 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }
   
   # Create gam object for full data fits
-  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA, link = ctrl$link), 
+  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, co = NA, theta = NA, link = ctrl$link), 
                                 "data" = data, "fit" = FALSE), argGam))
   
   # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, lam = NA, theta = NA, link = ctrl$link), "data" = data, 
+  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, co = NA, theta = NA, link = ctrl$link), "data" = data, 
                                 "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, fit = FALSE), argGam))
   
   # Preparing bootstrap object for gam.fit3

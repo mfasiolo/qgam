@@ -4,14 +4,14 @@
 \alias{elflss}
 \title{Extended log-F model with variable scale}
 \usage{
-elflss(link = list("identity", "log"), qu, lam, theta, remInter = TRUE)
+elflss(link = list("identity", "log"), qu, co, theta, remInter = TRUE)
 }
 \arguments{
 \item{link}{vector of two characters indicating the link function for the quantile location and for the log-scale.}
 
 \item{qu}{parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.}
 
-\item{lam}{parameter lambda of the ELF density, it must be positive. See Fasiolo et al. (2017) for details.}
+\item{co}{positive vector of constants used to determine parameter lambda of the ELF density (lambda = co / sigma).}
 
 \item{theta}{a scalar representing the intercept of the model for the log-scale log(sigma).}
 
@@ -21,7 +21,7 @@ elflss(link = list("identity", "log"), qu, lam, theta, remInter = TRUE)
 An object inheriting from mgcv's class \code{general.family}.
 }
 \description{
-The \code{elflss} family implements the Extended log-F density of Fasiolo et al. (2017) and it is supposed
+The \code{elflss} family implements the Extended log-F (ELF) density of Fasiolo et al. (2017) and it is supposed
              to work in conjuction with the general GAM fitting methods of Wood et al. (2017), implemented by
              \code{mgcv}. It differs from the \code{elf} family, because here the scale of the density 
              (sigma, aka the learning rate) can depend of the covariates, while in 
@@ -45,15 +45,15 @@ names(dataf) <- c("y", "x")
 
 # Fit median using elf directly: NOT RECOMMENDED
 fit <- gam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-           family = elflss(theta = -0.5, lam = 1, qu = 0.5), optimizer = "efs", 
+           family = elflss(theta = 0, co = rep(0.1, n), qu = 0.5), 
            data = dataf)
-           
+
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- predict(fit, se = TRUE)
 lines(x, tmp$fit[ , 1])
 lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)     
-
+lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)      
+ 
 # Use qgam: RECOMMENDED
 fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
             data = dataf, qu = 0.5, err = 0.1, argGam = list(optimizer = "efs"),

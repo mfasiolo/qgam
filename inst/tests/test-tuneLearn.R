@@ -35,7 +35,7 @@ test_that("tuneLearn_gamlss", {
       lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
       lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
       
-      check(tun, select = 1)
+      check(tun, sel = 1)
     }
     , NA)
 
@@ -67,7 +67,7 @@ test_that("tuneLearn_egam", {
       
       ylb <- if((ii %% 2) == 0) { paste(lossType[ii], "multicore") } else { lossType[ii] }
       plot(fit, select = 3, ylab = ylb)
-      check(tun, select = 1)
+      check(tun, sel = 1)
     }
     , NA)
     
