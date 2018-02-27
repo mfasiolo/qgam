@@ -15,7 +15,7 @@
 #'          we expect 50\% of the responses to fall below the fit. See \code{?cqcheck()} for details. The second plot related
 #'          to \code{|F(hat(mu)) - F(mu0)|}, which is the absolute bias attributable to the fact that qgam is using 
 #'          a smoothed version of the pinball-loss. The absolute bias is evaluated at each observation, and an histogram
-#'          is produced. See Fasiolo et al. (2017) for details. The function also prints out the average absolute bias,
+#'          is produced. See Fasiolo et al. (2017) for details. The function also prints out the integrated absolute bias,
 #'          and the proportion of observations lying below the regression line. It also provides some convergence 
 #'          diagnostics (regarding the optimization), which are the same as in \code{mgcv::gam.check}. 
 #'          It reports also the maximum (k') and the selected degrees of freedom of each smooth term.
@@ -59,7 +59,7 @@ check.qgam <- function(obj,
   hist(fitBias$fitted.values, xlab = expression(F(hat(mu)) - F(mu[0])), main = "Bias due to smoothed loss")
   
   cat("Theor. proportion of neg. resid.:", obj$family$getQu(), "  Actual proportion:", mean(res<0))
-  cat("\nMean absolute bias |F(mu) - F(mu0)| =", mean(abs(fitBias$fitted.values)))
+  cat("\nIntegrated absolute bias |F(mu) - F(mu0)| =", mean(abs(fitBias$fitted.values)))
 
   ## now summarize convergence information
   cat("\nMethod:",obj$method,"  Optimizer:",obj$optimizer)
