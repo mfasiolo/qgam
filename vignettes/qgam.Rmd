@@ -14,7 +14,7 @@ library(knitr)
 opts_chunk$set(out.extra='style="display:block; margin: auto"', fig.align="center", tidy=FALSE)
 ```
 
-This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2016](https://arxiv.org/abs/1707.03307).
+This R package offers methods for fitting additive quantile regression models based on splines, using the methods described in [Fasiolo et al., 2017](https://arxiv.org/abs/1707.03307).
 
 The main fitting functions are:
 
@@ -35,8 +35,7 @@ set.seed(6436)
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
             qu = 0.8, 
-            err = 0.1,
-            control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
+            err = 0.1)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -71,8 +70,7 @@ set.seed(6436)
 fit <- mqgam(accel~s(times, k=20, bs="ad"), 
              data = mcycle, 
              err = 0.1,
-             qu = quSeq, 
-             control = list("tol" = 0.01)) # <- sloppy tolerance to speed-up calibration 
+             qu = quSeq)
 ```
 
 To save memory `mqgam` does not return one `mgcv::gamObject` for each quantile, but it avoids storing some redundant data (such as several copies of the design matrix). The output of `mqgam` can be manipulated using the `qdo` function.
@@ -117,12 +115,10 @@ plot(x, dat, col = "grey", ylab = "y")
 for(iq in qus){ lines(x, qnorm(iq, f, sigma)) }
 ```
 
-We now fit ten quantiles between 0.05 and 0.95, using a quantile GAM with scalar learning rate. To speed up things I've pre-computed the learning rate. Just comment out the line `lsig = lsig,` if you want to re-computed it.
+We now fit ten quantiles between 0.05 and 0.95, using a quantile GAM with scalar learning rate.
 ```{r h2}
-lsig <- c(-0.96, -0.83, -0.69, -0.63, -0.76, -0.76, -0.89, -0.85, -0.99, -1.06)
 fit <- mqgam(y~s(x, k = 30, bs = "cr"), 
              data = dataf,
-             lsig = lsig,
              qu = qus, err = 0.05)
              
 qus <- seq(0.05, 0.95, length.out = 10)
@@ -144,11 +140,11 @@ lines(x, tmp$fit - 3 * tmp$se.fit, col = 2)
 ```
 
 We can do better by letting the learning rate vary with the covariate. In particular, we can use an additive model for quantile location and one for the scale or learning rate. Here I am fixing the intercept of 
-the additive model for the learning rate, in order to avoid calibrating it. Just comment out `lsig=-1.16` if
+the additive model for the learning rate, in order to avoid calibrating it. Just comment out `lsig=0.44` if
 you want to re-estimate it.
 ```{r h4}
 fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-            data = dataf, qu = 0.95, err = 0.05, lsig = -1.16)
+            data = dataf, qu = 0.95, err = 0.05, lsig = 0.44)
 
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- predict(fit, se = TRUE)

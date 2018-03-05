@@ -1,7 +1,7 @@
 #######
 # Internal loss function to be minimized using Brent method
 #
-.objFunLearnFast <- function(lsig, mObj, bObj, wb, initM, initB, pMat, pMatFull, qu, ctrl, varHat, 
+.objFunLearnFast <- function(lsig, mObj, bObj, wb, initM, initB, pMat, SStuff, qu, ctrl, varHat, 
                              err, argGam, cluster, multicore, paropts)
 { 
   if(ctrl$progress){ cat(".")}
@@ -37,8 +37,10 @@
   }
   
   if(ctrl$loss == "calFast"){ # Fast calibration OR ...
-    
-    outLoss <- .sandwichLoss(mFit = mFit, X = pMat, XFull = pMatFull, sdev = sdev, repar = mObj$hidRepara)
+   
+    Vbias <- .biasedCov(fit = mFit, X = SStuff$XFull, EXXT = SStuff$EXXT, EXEXT = SStuff$EXEXT, lpi = lpi)
+    outLoss <- .sandwichLoss(mFit = mFit, X = pMat, XFull = SStuff$XFull, sdev = sdev, repar = mObj$hidRepara, 
+                             alpha = Vbias$alpha, VSim = Vbias$V)
     initB <- NULL
     
   } else { # ... bootstrapping or cross-validation

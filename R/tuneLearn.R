@@ -96,13 +96,14 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   lsig <- sort( lsig )
   
   # Setting up control parameter
-  ctrl <- list( "loss" = "cal", "sam" = "boot", "K" = 50, "b" = 0, "vtype" = "m", "epsB" = 1e-5, "verbose" = FALSE, 
+  ctrl <- list( "loss" = "calFast", "sam" = "boot", "K" = 50, "b" = 0, "vtype" = "m", "epsB" = 1e-5, "verbose" = FALSE, 
                 "link" = if(is.formula(form)){"identity"}else{list("identity", "log")}, 
                 "progress" = ifelse(multicore, "none", "text") )
   
   # Checking if the control list contains unknown names. Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
   
+  if( ctrl$progress == FALSE ) { ctrl$progress <- "none" }
   if( !(ctrl$vtype%in%c("m", "b")) ) stop("control$vtype should be either \"m\" or \"b\" ")
   if( !(ctrl$loss%in%c("calFast", "cal", "pin")) ) stop("control$loss should be either \"cal\", \"pin\" or \"calFast\" ")
   if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")

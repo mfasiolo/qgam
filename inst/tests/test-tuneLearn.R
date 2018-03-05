@@ -2,7 +2,7 @@ context("tuneLearn")
 
 test_that("tuneLearn_gamlss", {
 
-  set.seed(651)
+  #set.seed(651)
   n <- 1000
   x <- seq(-4, 3, length.out = n)
   X <- cbind(1, x, x^2)
@@ -17,12 +17,13 @@ test_that("tuneLearn_gamlss", {
   QU <- 0.9
   lossType <- rep(c("calFast", "cal", "pin"), each = 2)
 
-  par(mfrow = c(1, 2))
-  for(ii in 1:2){ # Set to 1:6 if you want to test also other calibration methods
+  par(mfrow = c(3, 2))
+  par(mar = c(5.1, 4.1, 0.1, 2.1))
+  for(ii in c(1, 3, 5)){ # Set to 1:6 if you want to test all calibration methods
 
     expect_error({ # Actually we expect NO error!!
       tun <- tuneLearn(form, data = dataf, qu = QU, err = 0.1,
-                       lsig = seq(-5, 1, length.out = 10),
+                       lsig = seq(-4, 5, length.out = 15),
                        control = list("loss" = lossType[ii], "progress" = "none", "K" = 20),
                        multicore = ((ii %% 2) == 0), ncores = 2)
 
@@ -47,7 +48,7 @@ test_that("tuneLearn_gamlss", {
 
 test_that("tuneLearn_egam", {
   
-  set.seed(2)
+  #set.seed(2)
   dataf <- gamSim(1,n=400,dist="normal",scale=2,verbose=FALSE)
   form <- y~s(x0)+s(x1)+s(x2)+s(x3)
 

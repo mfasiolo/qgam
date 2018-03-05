@@ -72,7 +72,14 @@
     initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
-      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, repar = repar), 
+      if( ii == 1 ){
+        EXXT <- crossprod(pMatFull, pMatFull) / n                       # E(xx^T)
+        EXEXT <- tcrossprod( colMeans(pMatFull), colMeans(pMatFull) )   # E(x)E(x)^T
+      }
+      Vbias <- .biasedCov(fit = fit, X = pMatFull, EXXT = EXXT, EXEXT = EXEXT, lpi = lpi)
+      
+      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, repar = repar, 
+                                                 alpha = Vbias$alpha, VSim = Vbias$V), 
                           "convProb" = convProb)
     } else { # Bootstrapping or cross-validation: full data fit will be used when fitting the bootstrap datasets
       store[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "co" = fit$family$getCo(), 

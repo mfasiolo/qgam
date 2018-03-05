@@ -136,7 +136,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }
   
   # Setting up control parameter
-  ctrl <- list( "loss" = "cal", "sam" = "boot", "vtype" = "m", "epsB" = 1e-5,
+  ctrl <- list( "loss" = "calFast", "sam" = "boot", "vtype" = "m", "epsB" = 1e-5,
                 "init" = NULL, "brac" = log( c(1/2, 2) ),  "K" = 50,
                 "redWd" = 10, "tol" = .Machine$double.eps^0.25, "aTol" = 0.05, "b" = 0,
                 "gausFit" = NULL,
@@ -147,6 +147,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control)
   
+  if( ctrl$progress == "none" ) { ctrl$progress <- FALSE }
   if( !(ctrl$vtype%in%c("m", "b")) ) stop("control$vtype should be either \"m\" or \"b\" ")
   if( !(ctrl$loss%in%c("calFast", "cal", "pin")) ) stop("control$loss should be either \"cal\", \"pin\" or \"calFast\" ")
   if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
@@ -216,8 +217,13 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # Create prediction design matrices for each bootstrap sample or CV fold
   class( mObj ) <- c("gam", "glm", "lm") 
   mObj$coefficients <- rep(0, ncol(mObj$X))  # Needed to fool predict.gam
-  pMat <- pMatFull <- predict.gam(mObj, newdata = data, type = "lpmatrix")
+  pMat <- predict.gam(mObj, newdata = data, type = "lpmatrix")
   
+  # Stuff needed for the sandwich estimator
+  sandStuff <- list("XFull" = pMat,
+                    "EXXT" = crossprod(pMat, pMat) / n,                    # E(xx^T)
+                    "EXEXT" = tcrossprod( colMeans(pMat), colMeans(pMat))) # E(x)E(x)^T
+        
   # Calibration uses the linear predictor for the quantile location, we discard the rest 
   lpi <- attr(gausFit$formula, "lpi")
   if( !is.null(lpi) ){  
@@ -270,7 +276,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
       srange <- isig + ef * brac
       
       # Estimate log(sigma) using brent methods with current bracket (srange)
-      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, pMatFull = pMatFull, wb = wb, qu = qu[oi], err = err[oi],
+      res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, sandStuff = sandStuff, wb = wb, qu = qu[oi], err = err[oi],
                              srange = srange, gausFit = gausFit, varHat = varHat,
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
                              control = ctrl, argGam = argGam)  
@@ -346,7 +352,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
 ##########################################################################
 ### Internal version, which works for a single quantile qu
 ########################################################################## 
-.tuneLearnFast <- function(mObj, bObj, pMat, pMatFull, wb, qu, err,
+.tuneLearnFast <- function(mObj, bObj, pMat, sandStuff, wb, qu, err,
                            srange, gausFit, varHat,
                            multicore, cluster, ncores, paropts, 
                            control, argGam)
@@ -366,7 +372,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   # error is of another nature) we throw an error
   repeat{
     res <- tryCatch(.brent(brac=srange, f=.objFunLearnFast, mObj = mObj, bObj = bObj, wb = wb, init = init, 
-                           pMat = pMat, pMatFull = pMatFull, qu = qu, ctrl = control, varHat = varHat, err = err, argGam = argGam,
+                           pMat = pMat, SStuff = sandStuff, qu = qu, ctrl = control, varHat = varHat, err = err, argGam = argGam,
                            multicore = multicore, paropts = paropts, cluster = cluster, t = control$tol, aTol = control$aTol), 
                     error = function(e) e)
     
