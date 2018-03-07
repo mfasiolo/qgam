@@ -62,9 +62,10 @@
       bObj$family$putTheta( lsig )
       
       z <- init <- vector("list", length(ind))
-      for( kk in ind){
+      for( ii in 1:length(ind) ){
         # Creating boot weights from boot indexes 
-        .wb <- wb[[kk]]
+        kk <- ind[ ii ]
+        .wb <- wb[[ kk ]]
         bObj$w <- .wb
         
         # Recycle boot initialization, but at first iteration this is NULL... 
@@ -97,12 +98,12 @@
           } else { # (2)  ... variance of the main fit
             .sdev <- sdev
           }
-          z[[kk]] <- (.mu - mMU) / .sdev
+          z[[ii]] <- (.mu - mMU) / .sdev
         } else { # (1) ... out of sample observations minus their fitted values 
-          z[[kk]] <- (bObj$y - .mu)[ !.wb ]
+          z[[ii]] <- (bObj$y - .mu)[ !.wb ]
         }
         
-        init[[kk]] <- .init
+        init[[ii]] <- .init
       }
       
       return( list("z" = z, "init" = init) )
