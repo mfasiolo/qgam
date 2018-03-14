@@ -59,7 +59,7 @@
     
     # [2] Transform llk derivatives wrt mu to derivatives wrt linear predictor (eta)
     l1 <- l1 * ig1
-    if( type == "DllkDeta" ){ return(l1) }
+    if( type == "DllkDeta" ){ return( list("l1" = as.matrix(l1), "sig" = sig) ) }
       
     # [3] Transform into derivatives wrt regression coefficients
     # The i-th column of 'grads' is the score of the i-th likelihood component 
@@ -92,7 +92,7 @@
     
     # [2] Transform llk derivatives wrt mu to derivatives wrt linear predictor (eta)
     l1 <- l1 * ig1
-    if( type == "DllkDeta" ){ return(l1) }
+    if( type == "DllkDeta" ){ return(list("l1" = as.matrix(l1), "sig" = sig)) }
     
     # [3] Transform into derivatives wrt regression coefficients
     # The i-th column of 'grads' is the score of the i-th likelihood component 
