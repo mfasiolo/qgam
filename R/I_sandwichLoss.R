@@ -38,9 +38,8 @@
 
   } else { # Extended GAM version 
     
-    # Working weights, observed Fisher information and penalty matrix
-    w <- mFit$working.weights
-    OFI <- t(X) %*% (w * X)
+    # Observed Fisher information and penalty matrix
+    OFI <- crossprod( sqrt(mFit$working.weights) * X )
     P <- .getPenMatrix(q = ncol(X), UrS = repar$UrS, sp = log(mFit$sp), Mp = repar$Mp, U1 = repar$U1)
     
   }
@@ -48,15 +47,35 @@
   # Calculate variance of the score
   grad <- .llkGrads(gObj = mFit, X = XFull, jj = lpi)
   
-  # Variance of the score
+  # Covariance matrix of the score
   V <- cov( grad ) 
   if( !is.null(alpha) ){
     V <- alpha * V + (1-alpha) * VSim
   }
   V <- V * nrow(X) 
   
+  ################### Experimental code
+  # C <- chol(P, pivot = T)
+  # C <- C[ , order(attr(C, "pivot"))]
+  # 
+  # qX <- qr( sqrt(mFit$working.weights) * X )
+  # R <- qr.R(qX)[ , sort.list(qX$pivot)]
+  # 
+  # SV <- cbind(R, C)
+  # 
+  # if( qX$rank < ncol(X) ){
+  #   R <- qr.R( qX )[1:qX$rank, qX$rank]
+  #   Q <- qr.Q( qX )[ , 1:qX$rank]
+  # }
+  ################### 
+  
+  # Compute eigen-decomposition of V, get its rank and produce pseudo-inverse
+  eV <- eigen( V )
+  rv <- sum( eV$values > eV$values * .Machine$double.eps )
+  Q <- t( t(eV$vectors[ , 1:rv]) / sqrt(eV$values[1:rv]) ) 
+  
   # 'Sandwich' posterior covariance
-  S <- solve( OFI %*% solve(V, OFI) + P )  
+  S <- solve( (OFI %*% Q) %*% crossprod(Q, OFI) + P )  
   if( !is.null(lpi) ){
     S <- S[lpi[[1]], lpi[[1]]]
   } 
