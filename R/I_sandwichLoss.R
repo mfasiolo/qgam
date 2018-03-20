@@ -54,35 +54,26 @@
   }
   V <- V * nrow(X) 
   
-  ################### Experimental code
-  # C <- chol(P, pivot = T)
-  # C <- C[ , order(attr(C, "pivot"))]
-  # 
-  # qX <- qr( sqrt(mFit$working.weights) * X )
-  # R <- qr.R(qX)[ , sort.list(qX$pivot)]
-  # 
-  # SV <- cbind(R, C)
-  # 
-  # if( qX$rank < ncol(X) ){
-  #   R <- qr.R( qX )[1:qX$rank, qX$rank]
-  #   Q <- qr.Q( qX )[ , 1:qX$rank]
-  # }
-  ################### 
-  
   # Compute eigen-decomposition of V, get its rank and produce pseudo-inverse
   eV <- eigen( V )
   rv <- sum( eV$values > eV$values * .Machine$double.eps )
   Q <- t( t(eV$vectors[ , 1:rv]) / sqrt(eV$values[1:rv]) ) 
   
-  # 'Sandwich' posterior covariance
-  S <- solve( (OFI %*% Q) %*% crossprod(Q, OFI) + P )  
+  # Inverse 'Sandwich' posterior covariance
+  iS <- (OFI %*% Q) %*% crossprod(Q, OFI) + P  
+  
+  # Computed the Cholesky factor relevant to mu
   if( !is.null(lpi) ){
-    S <- S[lpi[[1]], lpi[[1]]]
-  } 
+    c22 <- chol( iS[lpi[[2]], lpi[[2]]] )
+    A <- forwardsolve(t(c22), iS[lpi[[2]], lpi[[1]]])
+    C <- chol( iS[lpi[[1]], lpi[[1]]] - crossprod(A) )
+  } else {
+    C <- chol( iS )
+  }
   
-  # Posterior variance of mu using sandwich
-  varSand <- rowSums((X %*% S) * X)
-  
+  # Posterior variance using sandwich: var(mu) = diag( X %*% iS^-1 %*% t(X) )
+  varSand <- rowSums(t(backsolve(C, forwardsolve(t(C), t(X)))) * X)
+
   bias <- numeric( nrow(X) ) * 0
   
   # Average distance KL(sand_i, post_i)

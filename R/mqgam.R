@@ -48,8 +48,7 @@
 #' set.seed(2)
 #' dat <- gamSim(1, n=300, dist="normal", scale=2)
 #' 
-#' fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8), 
-#'              control = list("tol" = 0.05)) # <- semi-sloppy tolerance to speed-up calibration
+#' fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8))
 #' 
 #' invisible( qdo(fit, 0.2, plot, pages = 1) )
 #' 
@@ -62,8 +61,7 @@
 #' # Fit for quantile 0.8 using the best sigma
 #' quSeq <- c(0.2, 0.4, 0.6, 0.8)
 #' set.seed(6436)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
-#'        control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
 #' 
 #' # Plot the fit
 #' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
