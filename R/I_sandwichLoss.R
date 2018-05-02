@@ -56,7 +56,7 @@
   
   # Compute eigen-decomposition of V, get its rank and produce pseudo-inverse
   eV <- eigen( V )
-  rv <- sum( eV$values > eV$values * .Machine$double.eps )
+  rv <- sum( eV$values > eV$values[1] * .Machine$double.eps )
   Q <- t( t(eV$vectors[ , 1:rv]) / sqrt(eV$values[1:rv]) ) 
   
   # Inverse 'Sandwich' posterior covariance
