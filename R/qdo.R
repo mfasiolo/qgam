@@ -46,6 +46,7 @@ qdo <- function(obj, qu=NULL, fun=I, ...){
   
   tmpObj[["model"]] <- obj[["model"]]
   tmpObj[["smooth"]] <- obj[["smooth"]]
+  tmpObj[["call"]][["data"]] <- obj[["data"]]
   
   out <- fun(tmpObj, ...)
   

@@ -132,6 +132,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     if(ii > 1){
       .out$model  <- NULL
       .out$smooth <- NULL 
+      .out$call$data <- NULL
     } 
     
     return( .out )
@@ -141,8 +142,10 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   names(out[["fit"]]) <- qu
   out[["model"]] <- out[["fit"]][[1]][["model"]]
   out[["smooth"]] <- out[["fit"]][[1]][["smooth"]]
+  out[["data"]] <- out[["fit"]][[1]][["call"]][["data"]]
   out[["fit"]][[1]][["model"]] <- NULL
   out[["fit"]][[1]][["smooth"]] <- NULL
+  out[["fit"]][[1]][["call"]][["data"]] <- NULL
   
   class(out) <- "mqgam"
   
