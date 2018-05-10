@@ -79,6 +79,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   nq <- length(qu)
   
   # Removing all NAs and unused levels from data
+  if( inherits(data, "groupedData") ) { data <- as.data.frame( data ) }
   data <- droplevels( na.omit( data ) )
   
   if( length(err) != nq ){

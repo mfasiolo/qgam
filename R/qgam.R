@@ -90,6 +90,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
   
   # Removing all NAs and unused levels from data
+  if( inherits(data, "groupedData") ) { data <- as.data.frame( data ) }
   data <- droplevels( na.omit( data ) )
   
   # Setting up control parameter (mostly used by tuneLearnFast)
