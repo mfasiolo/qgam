@@ -11,7 +11,7 @@ Maintainer: Matteo Fasiolo <matteo.fasiolo@gmail.com>
 Description: Smooth additive quantile regression models, fitted using the methods of Fasiolo et al. (2017) <arXiv:1707.03307>. Differently from 'quantreg', the smoothing parameters are estimated automatically by marginal loss minimization, while the regression coefficients are estimated using either PIRLS or Newton algorithm. The learning rate is determined so that the Bayesian credible intervals of the estimated effects have approximately the correct coverage. The main function is qgam() which is similar to gam() in 'mgcv', but fits non-parametric quantile regression models.
 License: GPL (>=2)
 Depends:
-    mgcv (>= 1.8.18)
+    mgcv (>= 1.8-23)
 Imports:
     shiny,
     plyr,
