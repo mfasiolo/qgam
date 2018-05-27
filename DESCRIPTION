@@ -2,13 +2,20 @@ Package: qgam
 Type: Package
 Title: Smooth Additive Quantile Regression Models
 Version: 1.2.1
-Date: 2018-03-01
+Date: 2018-05-25
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
              person("Simon", "N. Wood", role = c("ctb")), 
              person("Yannig", "Goude", role = c("ctb")),
              person("Raphael", "Nedellec", role = c("ctb")))
 Maintainer: Matteo Fasiolo <matteo.fasiolo@gmail.com>
-Description: Smooth additive quantile regression models, fitted using the methods of Fasiolo et al. (2017) <arXiv:1707.03307>. Differently from 'quantreg', the smoothing parameters are estimated automatically by marginal loss minimization, while the regression coefficients are estimated using either PIRLS or Newton algorithm. The learning rate is determined so that the Bayesian credible intervals of the estimated effects have approximately the correct coverage. The main function is qgam() which is similar to gam() in 'mgcv', but fits non-parametric quantile regression models.
+Description: Smooth additive quantile regression models, fitted using
+    the methods of Fasiolo et al. (2017) <arXiv:1707.03307>. Differently from
+    'quantreg', the smoothing parameters are estimated automatically by marginal
+    loss minimization, while the regression coefficients are estimated using either
+    PIRLS or Newton algorithm. The learning rate is determined so that the Bayesian
+    credible intervals of the estimated effects have approximately the correct
+    coverage. The main function is qgam() which is similar to gam() in 'mgcv', but
+    fits non-parametric quantile regression models.
 License: GPL (>=2)
 Depends:
     mgcv (>= 1.8-23)
@@ -20,8 +27,8 @@ Imports:
     grDevices
 Suggests:
     knitr,
-    MASS, 
-    RhpcBLASctl, 
+    MASS,
+    RhpcBLASctl,
     testthat
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1

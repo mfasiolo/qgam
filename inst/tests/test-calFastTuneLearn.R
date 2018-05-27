@@ -12,7 +12,7 @@ test_that("calFastTuneLearn", {
       form <- y ~ s(x0)+s(x1)+s(x2)+s(x3)
       lsig <- seq(-5.5, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.05
+      err <- 0.1
     }
     
     if(ii == 2){
@@ -31,7 +31,7 @@ test_that("calFastTuneLearn", {
       names(dat) <- c("y", "x")
       lsig <- seq(-5, 3, length.out = 15)
       qus <- c(0.01, 0.5, 0.95)
-      err <- 0.05
+      err <- 0.1
     }
     
     if( ii == 3 ){
@@ -49,7 +49,7 @@ test_that("calFastTuneLearn", {
       formF <- y~s(x, k = 30, bs = bs) + s(z, k = 30, bs = bs) + s(w, k = 30, bs = bs)
       lsig <- seq(-3, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.95)
-      err <- 0.05
+      err <- 0.1
     }
     
     if(ii == 4){
@@ -58,7 +58,7 @@ test_that("calFastTuneLearn", {
       form <- list(y ~ s(x0)+s(x1)+s(x2)+s(x3), ~ s(x0))
       lsig <- seq(-5.5, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.05
+      err <- 0.1
     }
     
     expect_error({
