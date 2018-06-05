@@ -3,9 +3,10 @@ context("calFastTuneLearn")
 
 test_that("calFastTuneLearn", {
   
-  par(mfrow = c(2, 2))
-  par(mar = c(5.1, 4.1, 0.1, 0.1))
-  for(ii in 1:3){ #### !!!!!!!!!!   set to 1:4 to test also elfss
+  set.seed(414)
+  #par(mfrow = c(2, 2))
+  #par(mar = c(5.1, 4.1, 0.1, 0.1))
+  for(ii in 1:1){ #### !!!!!!!!!!   set to 1:4 to test also elfss
     if(ii == 1){
       ### 1) 4D Gaussian example
       dat <- gamSim(1, n=1000, dist="normal", scale=2, verbose=FALSE)

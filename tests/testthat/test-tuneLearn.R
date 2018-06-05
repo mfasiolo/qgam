@@ -48,15 +48,15 @@ context("tuneLearn")
 
 test_that("tuneLearn_egam", {
   
-  #set.seed(2)
+  set.seed(211)
   dataf <- gamSim(1,n=400,dist="normal",scale=2,verbose=FALSE)
   form <- y~s(x0)+s(x1)+s(x2)+s(x3)
 
   QU <- 0.9
   lossType <- rep(c("calFast", "cal", "pin"), each = 2)
   
-  par(mfrow = c(3, 2))
-  for(ii in 1:6){
+  #par(mfrow = c(3, 2))
+  for(ii in 1:2){
   
     expect_error({ # Actually we expect NO error!!
       tun <- tuneLearn(form, data = dataf, qu = QU,

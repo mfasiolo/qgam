@@ -1,4 +1,4 @@
 library(testthat)
 library(qgam)
 
-test_package("qgam")
+test_check("qgam")

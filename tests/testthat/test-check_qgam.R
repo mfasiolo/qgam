@@ -27,7 +27,7 @@ context("check_qgam")
 
 test_that("check_qgam_egam", {
   
-  #set.seed(57576)
+  set.seed(57576)
   dat <- gamSim(1,n=1000,dist="normal",scale=2, verbose = FALSE)
   
   expect_error({
