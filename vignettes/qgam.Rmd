@@ -244,6 +244,89 @@ qdo(fit, 0.2, check)
 
 The printed output gives some information about the optimizer used to estimate the smoothing parameters, for fixed learning rate. See `?check.qgam` for more information. The plot has been obtained using `cqcheck`, where each data point has been binned using the fitted values. On the right side of the plot there seems to be some large deviations, but the rug shows that there are very few data points there.  
 
+
+Setting the loss-smoothing parameter and checking convergence
+=======================
+
+Let's simulate some data:
+```{r check1, message = F}
+set.seed(5235)
+n <- 1000
+x <- seq(-3, 3, length.out = n)
+X <- cbind(1, x, x^2)
+beta <- c(0, 1, 1)
+f <- drop(X %*% beta)
+dat <- f + rgamma(n, 4, 1)
+dataf <- data.frame(cbind(dat, x))
+names(dataf) <- c("y", "x")
+```
+Assume that we want to estimate quantiles 0.05, 0.5 and 0.95:
+```{r check2, message = F}
+qus <- c(0.05, 0.5, 0.95)
+fit <- mqgam(y ~ s(x), data = dataf, qu = qus, err = 0.05)
+
+plot(x, dat, col = "grey", ylab = "y")
+lines(x, f + qgamma(0.95, 4, 1), lty = 2)
+lines(x, f + qgamma(0.5, 4, 1), lty = 2)
+lines(x, f + qgamma(0.05, 4, 1), lty = 2)
+lines(x, qdo(fit, qus[1], predict), col = 2)
+lines(x, qdo(fit, qus[2], predict), col = 2)
+lines(x, qdo(fit, qus[3], predict), col = 2)
+```
+
+Let's try to use several values of `err`:
+```{r check2b, message = F}
+lfit <- lapply(c(0.01, 0.05, 0.1, 0.2, 0.3, 0.5),
+               function(.inp){
+                 mqgam(y ~ s(x), data = dataf, qu = qus, err = .inp, 
+                       control = list("progress" = F))
+               })
+
+plot(x, dat, col = "grey", ylab = "y", ylim = c(-2, 20))
+colss <- rainbow(length(lfit))
+for(ii in 1:length(lfit)){
+  lines(x, qdo(lfit[[ii]], qus[1], predict), col = colss[ii])
+  lines(x, qdo(lfit[[ii]], qus[2], predict), col = colss[ii])
+  lines(x, qdo(lfit[[ii]], qus[3], predict), col = colss[ii])
+}
+lines(x, f + qgamma(0.95, 4, 1), lty = 2)
+lines(x, f + qgamma(0.5, 4, 1), lty = 2)
+lines(x, f + qgamma(0.05, 4, 1), lty = 2)
+```
+The bias increases with `err`, and it is upward (downward) for high (low) quantiles. The median fit is not much affected by `err`. The bias really starts appearing for `err > 0.1`. Decreasing `err` tends to slow down computation:
+```{r check3, message = F}
+system.time( fit1 <- qgam(y ~ s(x), data = dataf, qu = 0.95, err = 0.05, 
+                           control = list("progress" = F)) )[[3]]
+system.time( fit2 <- qgam(y ~ s(x), data = dataf, qu = 0.95, err = 0.001, 
+                           control = list("progress" = F)) )[[3]]
+```
+Even worse, it can lead to numeric problems. Here we check that we have found the minimum of the calibration loss:
+```{r check4, message = F}
+check(fit1$calibr, sel = 2)
+check(fit2$calibr, sel = 2)
+```
+In the first case the loss looks smooth and with as single minimum, in the second case we have some instabilities. If the calibration loss looks like this, you generally have to increase `err`.
+
+We can use `check` to have an estimate of the bias and to have information regarding the convergence of the smoothing parameter estimation routine:
+```{r check5, message = F}
+check(fit1)
+```
+The second plot suggest that the actual bias is much lower than the bound `err = 0.05`. This is also supported by the first two lines of text, which say that 95.1\% of the residuals are negative, which is very close to the theoretical 95\%. The text says that full convergence in smoothing parameter estimation has been achieved, it is important to check this.
+
+In summary, practical experience suggests that:
+
+   - the default `err = 0.05` offer a good compromise between bias and stability;
+   - if the calibration loss plotted by `check(fit$learn)` is irregular, try to increase `err`;
+   - same if the text printed by `check(fit)` does not say that `full convergence` was achieved;
+   - you can estimate the bias using `check(fit)`;
+   - if you have to increase `err` to 0.2 or higher, there might be something wrong with your model;
+   - you might get messages saying that `outer Newton did not converge fully` during estimation. This might
+     not be problematic as long as the calibration loss is smooth and `full convergence` was achieved;
+   - in preliminary studies do not decrease `err` too much, as it slows down computation;
+   - setting `err` too low is not a good idea: it is much better to have some bias than 
+     computational problems.
+     
+
 Application to probabilistic electricity load forecasting
 =======================
 
