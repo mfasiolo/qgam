@@ -50,6 +50,8 @@
       
       init <- if(is.null(init)){ list(store[[ii]]$init) } else { list(init, store[[ii]]$init) }
       
+      .offset <- bObj$offset
+      
       if( glss ){
         init <- lapply(init, function(inp) Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
         fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
@@ -58,6 +60,13 @@
         # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
         init <- betas <- Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
         betas <- betas[lpi[[1]]] 
+        
+        if( !is.null(.offset) && !is.null(.offset[[1]]) ){  
+          .offset <- .offset[[1]]  
+        } else {
+          .offset <- numeric( nrow(pMat) )
+        }
+        mu <- bObj$family$linfo[[1]]$linkinv( pMat %*% betas + .offset )
       } else {
         bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
         fit <- .egamFit(x=bObj$X, y=bObj$y, sp=as.matrix(bObj$lsp0), Eb=bObj$Eb, UrS=bObj$UrS,
@@ -65,9 +74,10 @@
                         control=bObj$control, null.coef=bObj$null.coef, 
                         start=init, needVb=(ctrl$loss == "cal" && ctrl$vtype == "b"))
         init <- betas <- fit$coef
+        
+        if( is.null(.offset) ){ .offset <- numeric( nrow(pMat) )  }
+        mu <- bObj$family$linkinv( pMat %*% betas + .offset )
       }
-      
-      mu <- pMat %*% betas
       
       if( ctrl$loss == "cal" ){ # (1) Return standardized deviations from full data fit OR ... 
         if( ctrl$vtype == "b" ){ # (2) Use variance of bootstrap fit OR ...

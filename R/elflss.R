@@ -188,13 +188,15 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
     theta <- get(".theta")
     co <- get(".co")
     
-    # If offset is not null or a vector of zeros, give an error
-    if( !is.null(offset[[1]]) && sum(abs(offset)) )  stop("offset not still available for this family")
+    if( !is.null(offset) ){ offset[[3]] <- 0 } # Not sure whether this is needed
     
     jj <- attr(X,"lpi") ## extract linear predictor index
     eta <- X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]
+    if( !is.null(offset[[1]]) ){ eta <- eta + offset[[1]] }
     mu <- family$linfo[[1]]$linkinv(eta)
+    
     eta1 <- X[,jj[[2]],drop=FALSE]%*%coef[jj[[2]]] + theta
+    if( !is.null(offset[[2]]) ){ eta1 <- eta1 + offset[[2]] }
     sig <-  family$linfo[[2]]$linkinv(eta1) 
     lam <- co / sig 
     
@@ -310,9 +312,10 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
     use.unscaled <- if (!is.null(attr(E,"use.unscaled"))) TRUE else FALSE
     if (is.null(start)) {
       jj <- attr(x,"lpi")
+      if( !is.null(offset) ){ offset[[3]] <- 0 } # Not sure whether this is needed
       start <- rep(0,ncol(x))
-      yt1 <- if (family$link[[1]]=="identity") y else 
-        family$linfo[[1]]$linkfun(abs(y)+max(y)*1e-7)
+      yt1 <- if (family$link[[1]]=="identity"){ y }else{ family$linfo[[1]]$linkfun(abs(y)+max(y)*1e-7) }
+      if (!is.null(offset[[1]])) yt1 <- yt1 - offset[[1]]
       x1 <- x[,jj[[1]],drop=FALSE]
       e1 <- E[,jj[[1]],drop=FALSE] ## square root of total penalty
       #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
@@ -324,6 +327,7 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
       } else startji <- pen.reg(x1,e1,yt1)
       start[jj[[1]]] <- startji
       lres1 <- log(abs(y-family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%start[jj[[1]]])))
+      if (!is.null(offset[[2]])){ lres1 <- lres1 - offset[[2]] }
       x1 <-  x[,jj[[2]],drop=FALSE];
       e1 <- E[,jj[[2]],drop=FALSE]
       #ne1 <- norm(e1); if (ne1==0) ne1 <- 1

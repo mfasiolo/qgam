@@ -30,12 +30,14 @@
   
   if( !is.null(jj) ) { # GAMLSS
     
-    # If offset is not null or a vector of zeros, give an error
-    if( !is.null(offset[[1]]) && sum(abs(offset)) )  stop("offset not still available for this family")
+    if( !is.null(offset) ){ offset[[3]] <- 0 }
     
     eta <- X[ , jj[[1]], drop=FALSE] %*% beta[jj[[1]]]
+    if( !is.null(offset[[1]]) ){ eta <- eta + offset[[1]] }
     mu <- fam$linfo[[1]]$linkinv( eta )
+    
     eta1 <- X[ , jj[[2]], drop=FALSE] %*% beta[jj[[2]]] + theta
+    if( !is.null(offset[[2]]) ){ eta1 <- eta1 + offset[[2]] }
     sig <-  fam$linfo[[2]]$linkinv( eta1 ) 
     lam <- co / sig
     
@@ -73,10 +75,11 @@
     sig <- exp( theta )
     lam <- co / sig
     
-    # If offset is not null or a vector of zeros, give an error
-    if( !is.null(offset) && sum(abs(offset)) )  stop("offset not still available for this family")
+    if( is.null(offset) ){
+     offset <- numeric( nrow(X) )  
+    }
     
-    eta <- X %*% beta
+    eta <- X %*% beta + offset
     mu <- fam$linkinv( eta )
 
     z <- (y - mu) / sig
