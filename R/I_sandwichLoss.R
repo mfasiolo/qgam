@@ -76,8 +76,11 @@
 
   bias <- numeric( nrow(X) ) * 0
   
-  # Average distance KL(sand_i, post_i)
-  outLoss <- mean( sqrt(varSand/varOFI + bias^2/varOFI + log(varOFI/varSand)) )
+  # Excluded observ where the variance is 0 (probably because all corresponding covariate values are 0)
+  not0 <- which( !(varOFI == 0 & varSand == 0) )
+  
+  # Average distance KL(sand_i, post_i) on non-zeros
+  outLoss <- mean( sqrt(varSand/varOFI + bias^2/varOFI + log(varOFI/varSand))[not0] )
   
   return( outLoss )
   
