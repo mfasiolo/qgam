@@ -116,6 +116,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     learn <- tuneLearnFast(form = form, data = data, qu = qu, err = err, multicore = multicore, cluster = cluster, 
                            ncores = ncores, paropts = paropts, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
+    err <- learn$err # Over-writing err parameter!
   }
   
   # Fit model for fixed log-sigma

@@ -115,6 +115,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
                            multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,
                            control = ctrl, argGam = argGam)
     lsig <- learn$lsig
+    err <- learn$err # Over-writing err parameters!
     out[["calibr"]] <- learn
   } else { # ... use the one provided by the user
     if( length(lsig) == 1 ) {
