@@ -338,6 +338,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
     
   }
   
+  if( any(errors > err) ){ message("We had to increase \`err\` for some of the quantiles. See fit$calibr$err") }
+  
   names(sigs) <- qu
   
   out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store)
