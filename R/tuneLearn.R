@@ -118,7 +118,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
     fam <- "elf"
     gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
     varHat <- gausFit$sig2
-    initM <- list("start" = coef(gausFit) + c(qnorm(qu, 0, sqrt(gausFit$sig2)), rep(0, length(coef(gausFit))-1)), 
+    initM <- list("start" = coef(gausFit) + c(quantile(gausFit$residuals, qu), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = NULL) # let gam() initialize sp via initial.spg() 
   } else {
     fam <- "elflss"

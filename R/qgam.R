@@ -121,8 +121,11 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   
   # Fit model for fixed log-sigma
   # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
-  if( fam=="elf" && is.null(argGam$start) ) { argGam$start <- coef(ctrl$gausFit) + c(qnorm(qu, 0, sqrt(varHat)), rep(0, length(coef(ctrl$gausFit))-1))  }
+  if( fam=="elf" && is.null(argGam$start) ) { 
+    argGam$start <- coef(ctrl$gausFit) + c(quantile(ctrl$gausFit$residuals, qu), rep(0, length(coef(ctrl$gausFit))-1))  
+  }
   co <- err * sqrt(2*pi*varHat) / (2*log(2))
+  
   fit <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, co = co, theta = lsig), "data" = data), argGam))
   
   fit$calibr <- learn
