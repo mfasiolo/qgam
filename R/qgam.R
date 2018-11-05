@@ -89,10 +89,9 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
 {
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
   
-  # Removing all NAs and unused levels from data
-  if( inherits(data, "groupedData") ) { data <- as.data.frame( data ) }
-  data <- droplevels( na.omit( data ) )
-  
+  # Removing all NAs, unused variables and factor levels from data
+  data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
+
   # Setting up control parameter (mostly used by tuneLearnFast)
   ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = if(is.formula(form)){"identity"}else{list("identity", "log")})
   
