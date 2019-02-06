@@ -37,7 +37,7 @@
 #'                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
 #'                                       By default \code{init=NULL} and the optimization is initialized by other means.}
 #'                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=log(c(0.5, 2))}, so the initial 
-#'                                       search range is \code{(init - log(0.5), init + log(2))}.}
+#'                                       search range is \code{(init + log(0.5), init + log(2))}.}
 #'                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
 #'                                      See \code{?optimize} for details.}
 #'                   \item{\code{aTol} = Brent search parameter. If the solution to a Brent get closer than 
