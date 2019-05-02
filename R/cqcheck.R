@@ -61,7 +61,7 @@
 #' cqcheck(obj = fit, v = c("x"), X = dataf, y = y) 
 #' 
 #' #### Add a smooth for x
-#' fit <- qgam(y~s(x), qu = qu, err = 0.05, data = dataf)
+#' fit <- qgam(y~s(x), qu = qu, data = dataf)
 #' cqcheck(obj = fit, v = c("x"), X = dataf, y = y) # Better!
 #' 
 #' # Lets look across x and z. As we move along z (x2 in the plot) 

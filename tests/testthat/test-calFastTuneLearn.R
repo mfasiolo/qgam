@@ -6,14 +6,13 @@ test_that("calFastTuneLearn", {
   set.seed(414)
   #par(mfrow = c(2, 2))
   #par(mar = c(5.1, 4.1, 0.1, 0.1))
-  for(ii in 1:1){ #### !!!!!!!!!!   set to 1:4 to test also elfss
+  for(ii in 1:4){ #### !!!!!!!!!!   set to 1:4 to test also elfss
     if(ii == 1){
       ### 1) 4D Gaussian example
       dat <- gamSim(1, n=1000, dist="normal", scale=2, verbose=FALSE)
       form <- y ~ s(x0)+s(x1)+s(x2)+s(x3)
       lsig <- seq(-5.5, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.1
     }
     
     if(ii == 2){
@@ -32,7 +31,7 @@ test_that("calFastTuneLearn", {
       names(dat) <- c("y", "x")
       lsig <- seq(-5, 3, length.out = 15)
       qus <- c(0.01, 0.5, 0.95)
-      err <- 0.1
+      
     }
     
     if( ii == 3 ){
@@ -50,7 +49,7 @@ test_that("calFastTuneLearn", {
       formF <- y~s(x, k = 30, bs = bs) + s(z, k = 30, bs = bs) + s(w, k = 30, bs = bs)
       lsig <- seq(-3, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.95)
-      err <- 0.1
+      
     }
     
     if(ii == 4){
@@ -59,7 +58,7 @@ test_that("calFastTuneLearn", {
       form <- list(y ~ s(x0)+s(x1)+s(x2)+s(x3), ~ s(x0))
       lsig <- seq(-5.5, 4, length.out = 15)
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.1
+      
     }
     
     expect_error({
@@ -71,7 +70,6 @@ test_that("calFastTuneLearn", {
                                             data = dat,
                                             lsig = lsig,
                                             qu = .q,
-                                            err = err, 
                                             control = list("loss" = met, "progress" = "none"))})
       }
     } , NA)

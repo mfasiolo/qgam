@@ -32,7 +32,7 @@ test_that("check_qgam_egam", {
   
   expect_error({
     
-    fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.9, control = list("progress" = FALSE))
+    fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.9, control = list("progress" = FALSE))
     invisible(capture.output( check(fit) ))
     
   } , NA)

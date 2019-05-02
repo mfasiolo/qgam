@@ -1,13 +1,21 @@
-
 ---
 title: "qgam: quantile non-parametric additive models"
+date: '`r format(Sys.Date(), "%B %d %Y")`'
 author: "Matteo Fasiolo, Simon N. Wood, Yannig Goude, and Raphael Nedellec"
-date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
 vignette: >
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteIndexEntry{qgam_vignette}
-  %\VignetteEncoding{UTF-8}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteIndexEntry{quantile_mgcViz}
+    %\VignetteEncoding{UTF-8}
 ---
+
+<style>
+body {
+text-align: justify}
+</style>
 
 ```{r setup, include=FALSE}
 library(knitr)
@@ -31,11 +39,9 @@ Let's start with a simple example. Here we are fitting a regression model with a
 library(qgam); library(MASS)
 if( suppressWarnings(require(RhpcBLASctl)) ){ blas_set_num_threads(1) } # Optional
 
-set.seed(6436)
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
-            qu = 0.8, 
-            err = 0.1)
+            qu = 0.8)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -55,7 +61,6 @@ set.seed(6436)
 cal <- tuneLearn(accel~s(times, k=20, bs="ad"), 
                  data = mcycle, 
                  qu = 0.8,
-                 err = 0.1,
                  lsig = seq(1, 3, length.out = 20), 
                  control = list("progress" = "none")) #<- sequence of values for learning rate
                  
@@ -69,7 +74,6 @@ quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
 fit <- mqgam(accel~s(times, k=20, bs="ad"), 
              data = mcycle, 
-             err = 0.1,
              qu = quSeq)
 ```
 
@@ -100,7 +104,7 @@ Dealing with heteroscedasticity
 Let us simulate some data from an heteroscedastic model.
 ```{r h1}
 set.seed(651)
-n <- 5000
+n <- 2000
 x <- seq(-4, 3, length.out = n)
 X <- cbind(1, x, x^2)
 beta <- c(0, 1, 1)
@@ -110,7 +114,7 @@ dat <- f + rnorm(n, 0, sigma)
 dataf <- data.frame(cbind(dat, x))
 names(dataf) <- c("y", "x")
    
-qus <- seq(0.05, 0.95, length.out = 10)
+qus <- seq(0.05, 0.95, length.out = 5)
 plot(x, dat, col = "grey", ylab = "y")
 for(iq in qus){ lines(x, qnorm(iq, f, sigma)) }
 ```
@@ -119,9 +123,9 @@ We now fit ten quantiles between 0.05 and 0.95, using a quantile GAM with scalar
 ```{r h2}
 fit <- mqgam(y~s(x, k = 30, bs = "cr"), 
              data = dataf,
-             qu = qus, err = 0.05)
+             qu = qus)
              
-qus <- seq(0.05, 0.95, length.out = 10)
+qus <- seq(0.05, 0.95, length.out = 5)
 plot(x, dat, col = "grey", ylab = "y")
 for(iq in qus){ 
  lines(x, qnorm(iq, f, sigma), col = 2)
@@ -130,7 +134,7 @@ for(iq in qus){
 legend("top", c("truth", "fitted"), col = 2:1, lty = rep(1, 2))
 ```
 
-The fitted quantiles are close to the true ones, but their credible intervals don't vary much with x. Indeed, let's look at intervals for quantile 0.95.
+With the exception of `qu = 0.95`, the fitted quantiles are close to the true ones, but their credible intervals don't vary much with x. Indeed, let's look at intervals for quantile 0.95.
 ```{r h3}
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- qdo(fit, 0.95, predict, se = TRUE)
@@ -139,26 +143,52 @@ lines(x, tmp$fit + 3 * tmp$se.fit, col = 2)
 lines(x, tmp$fit - 3 * tmp$se.fit, col = 2)
 ```
 
-We can do better by letting the learning rate vary with the covariate. In particular, we can use an additive model for quantile location and one for the scale or learning rate. Here I am fixing the intercept of 
-the additive model for the learning rate, in order to avoid calibrating it. Just comment out `lsig=0.44` if
-you want to re-estimate it.
+We can get better credible intervals, and solve the "wigglines" problem for the top quantile, by letting the learning rate vary with the covariate. In particular, we can use an additive model for quantile location and one for learning rate.
 ```{r h4}
 fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-            data = dataf, qu = 0.95, err = 0.05, lsig = 0.44)
+            data = dataf, qu = 0.95)
 
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- predict(fit, se = TRUE)
-lines(x, tmp$fit[ , 1])
-lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
+lines(x, tmp$fit)
+lines(x, tmp$fit + 3 * tmp$se.fit, col = 2)
+lines(x, tmp$fit - 3 * tmp$se.fit, col = 2)
+```
+Now the credible intervals correctly represent the underlying uncertainty, and the fit has the correct amount of smoothness.
+
+Neglecting to take the heteroscedasticity into account can lead to bias, in addition to inadequate coverage of the credible intervals. Let's go back the motorcycle data set, and to the first model we fitted:
+```{r mcy2rnd, message = F}
+fit <- qgam(accel~s(times, k=20, bs="ad"), 
+            data = mcycle, 
+            qu = 0.8)
+
+# Plot the fit
+xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
+pred <- predict(fit, newdata = xSeq, se=TRUE)
+plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+lines(xSeq$times, pred$fit, lwd = 1)
+lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)   
 ```
 
-Now the credible intervals correctly represent the underlying uncertainty. 
+The slightly disturbing thing about this quantile fit is that for `Times < 10` the fit is clearly above all the responses. But we are fitting quantile 0.8, hence we should expect around 20$\%$ of the responses to be above the fit. The problem here is that the variance of the response (`accel`) varies wildly with `Times`, so that the bias induced by the smoothed pinball loss used by `qgam` is not constant (see Fasiolo et al. 2017 for details). This issue is solved by letting the learning rate change with `Times`: 
+```{r mcy2rnd2, message = F}
+fit <- qgam(list(accel ~ s(times, k=20, bs="ad"), ~ s(times)),
+            data = mcycle, 
+            qu = 0.8)
+
+pred <- predict(fit, newdata = xSeq, se=TRUE)
+plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+lines(xSeq$times, pred$fit, lwd = 1)
+lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)  
+```
+
 
 Model checking
 =======================
 
-The `qgam` package provides some functions that can be useful for model checking. In particular, we have:
+The `qgam` package provides some functions that can be useful for model checking, but a more complete set of visualisation and checking tools can be found in the `mgcViz` R package (Fasiolo et al., 2018). In `qgam` we have:
 
    - `cqcheck` if we are fitting, say, quantile 0.2 we expect roughly $20\%$ of the observations to fall below the fitted quantile. This function produces some plots to verify this.
    - `cqcheckI` interactive version of `cqcheckI`. Implemented using the `shiny` package. Not demonstrated here, 
@@ -263,7 +293,7 @@ names(dataf) <- c("y", "x")
 Assume that we want to estimate quantiles 0.05, 0.5 and 0.95:
 ```{r check2, message = F}
 qus <- c(0.05, 0.5, 0.95)
-fit <- mqgam(y ~ s(x), data = dataf, qu = qus, err = 0.05)
+fit <- mqgam(y ~ s(x), data = dataf, qu = qus)
 
 plot(x, dat, col = "grey", ylab = "y")
 lines(x, f + qgamma(0.95, 4, 1), lty = 2)
@@ -274,7 +304,7 @@ lines(x, qdo(fit, qus[2], predict), col = 2)
 lines(x, qdo(fit, qus[3], predict), col = 2)
 ```
 
-Let's try to use several values of `err`:
+Since `qgam` version 1.3 the parameter `err`, which determines the smoothness of the loss function used by `qgam`, is determined automatically. But there might be scenarios where you might want to chose is manually, so let's try to use several values of `err`:
 ```{r check2b, message = F}
 lfit <- lapply(c(0.01, 0.05, 0.1, 0.2, 0.3, 0.5),
                function(.inp){
@@ -315,7 +345,8 @@ The second plot suggest that the actual bias is much lower than the bound `err =
 
 In summary, practical experience suggests that:
 
-   - the default `err = 0.05` offer a good compromise between bias and stability;
+   - the automatic procedure for selecting `err` offer a good compromise between bias and stability;
+   - the old default (`qgam` version < 1.3) was `err = 0.05`, which generally does not imply too much bias;
    - if the calibration loss plotted by `check(fit$learn)` is irregular, try to increase `err`;
    - same if the text printed by `check(fit)` does not say that `full convergence` was achieved;
    - you can estimate the bias using `check(fit)`;
@@ -324,7 +355,7 @@ In summary, practical experience suggests that:
      not be problematic as long as the calibration loss is smooth and `full convergence` was achieved;
    - in preliminary studies do not decrease `err` too much, as it slows down computation;
    - setting `err` too low is not a good idea: it is much better to have some bias than 
-     computational problems.
+     numerical problems.
      
 
 Application to probabilistic electricity load forecasting
@@ -342,7 +373,7 @@ Here we consider a UK electricity demand dataset, taken from the national grid [
    - `Holy` binary variable indicating holidays.
    - `Year` and `Date` should obvious, and partially redundant.
 
-See [Fasiolo et al., 2016](https://arxiv.org/abs/1707.03307) for more details. This is how the demand over the period looks like:
+See [Fasiolo et al., 2017](https://arxiv.org/abs/1707.03307) for more details. This is how the demand over the period looks like:
 ```{r edf1}
 data("UKload")
 tmpx <- seq(UKload$Year[1], tail(UKload$Year, 1), length.out = nrow(UKload)) 
@@ -364,7 +395,7 @@ set.seed(41241)
 sigSeq <- seq(4, 8, length.out = 16)
 closs <- tuneLearn(form = form, data = UKload, 
                    lsig = sigSeq, qu = qu, control = list("K" = 20), 
-                   multicore = TRUE, ncores = 2, err = 0.1)
+                   multicore = TRUE, ncores = 2)
 
 check(closs)
 ```
@@ -372,7 +403,7 @@ check(closs)
 Now let's fit the model with the learning rate corresponding to the lowest loss and let's look at the resulting smooth effects. 
 ```{r edf4}
 lsig <- closs$lsig
-fit <- qgam(form = form, data = UKload, lsig = lsig, qu = qu, err = 0.1)
+fit <- qgam(form = form, data = UKload, lsig = lsig, qu = qu)
 plot(fit, scale = F, page = 1)
 ```
 
@@ -400,6 +431,8 @@ References
 =======================
   
   * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at https://arxiv.org/abs/1707.03307
+  
+  * Fasiolo, M., Nedellec, R., Goude, Y. and Wood, S.N. (2018). Scalable visualisation methods for modern Generalized Additive Models. Available at https://arxiv.org/abs/1809.10632
 
 
 

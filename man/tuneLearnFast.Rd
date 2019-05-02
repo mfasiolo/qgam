@@ -4,9 +4,10 @@
 \alias{tuneLearnFast}
 \title{Fast learning rate calibration for the Gibbs posterior}
 \usage{
-tuneLearnFast(form, data, qu, err = 0.05, multicore = !is.null(cluster),
-  cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-  control = list(), argGam = NULL)
+tuneLearnFast(form, data, qu, err = NULL,
+  multicore = !is.null(cluster), cluster = NULL,
+  ncores = detectCores() - 1, paropts = list(), control = list(),
+  argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -16,8 +17,9 @@ By default the variables are taken from environment(formula): typically the envi
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
-same length of \code{qu}. See Fasiolo et al. (2016) for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+The old default was \code{err=0.05}.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -33,7 +35,7 @@ have the correct environment set up for computing.}
 
 \item{control}{A list of control parameters for \code{tuneLearn} with entries: \itemize{
                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
-                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
                                       data.}
                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
@@ -49,7 +51,7 @@ have the correct environment set up for computing.}
                   \item{\code{init} = an initial value for the log learning rate (log(sigma)). 
                                       By default \code{init=NULL} and the optimization is initialized by other means.}
                   \item{\code{brac} = initial bracket for Brent method. By default \code{brac=log(c(0.5, 2))}, so the initial 
-                                      search range is \code{(init - log(0.5), init + log(2))}.}
+                                      search range is \code{(init + log(0.5), init + log(2))}.}
                   \item{\code{tol} = tolerance used in the Brent search. By default \code{tol=.Machine$double.eps^0.25}.
                                      See \code{?optimize} for details.}
                   \item{\code{aTol} = Brent search parameter. If the solution to a Brent get closer than 
@@ -96,12 +98,10 @@ library(qgam); library(MASS)
 set.seed(5235)
 tun <- tuneLearnFast(form = accel~s(times,k=20,bs="ad"), 
                      data = mcycle, 
-                     err = 0.05, 
                      qu = 0.2)
 
 # Fit for quantile 0.2 using the best sigma
-fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2,
-            err = 0.05, lsig = tun$lsig)
+fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2, lsig = tun$lsig)
 
 pred <- predict(fit, se=TRUE)
 plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -113,18 +113,15 @@ lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)
 ###
 # Multiple quantile fits
 ###
-\dontrun{
 # Calibrate learning rate on a grid
 quSeq <- c(0.25, 0.5, 0.75)
 set.seed(5235)
 tun <- tuneLearnFast(form = accel~s(times, k=20, bs="ad"), 
                      data = mcycle, 
-                     err = 0.05, 
                      qu = quSeq)
 
 # Fit using estimated sigmas
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq,
-             err = 0.05, lsig = tun$lsig)
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq, lsig = tun$lsig)
 
 # Plot fitted quantiles
 plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -132,8 +129,26 @@ plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration",
 for(iq in quSeq){
   pred <- qdo(fit, iq, predict)
   lines(mcycle$times, pred, col = 2)
-}   
-}                
+}  
+
+\dontrun{
+# You can get a better fit by letting the learning rate change with "accel"
+# For instance
+tun <- tuneLearnFast(form = list(accel ~ s(times, k=20, bs="ad"), ~ s(times)), 
+                      data = mcycle, 
+                      qu = quSeq)
+
+fit <- mqgam(list(accel ~ s(times, k=20, bs="ad"), ~ s(times)),
+             data = mcycle, qu = quSeq, lsig = tun$lsig)
+
+# Plot fitted quantiles
+plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
+     ylim = c(-150, 80))
+for(iq in quSeq){
+  pred <- qdo(fit, iq, predict)
+  lines(mcycle$times, pred, col = 2)
+}
+} 
 
 }
 \references{

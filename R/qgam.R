@@ -8,9 +8,11 @@
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
 #' @param lsig The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-#'             parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
+#'             parameter is estimated by posterior calibration described in Fasiolo et al. (2017). Obviously, the function is much faster
 #'             if the user provides a value. 
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+#'            Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+#'            The old default was \code{err=0.05}.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -38,7 +40,7 @@
 #' 
 #' # Fit for quantile 0.5 using the best sigma
 #' set.seed(6436)
-#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = 0.5)
+#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.5)
 #' 
 #' # Plot the fit
 #' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -48,6 +50,19 @@
 #' lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 #' lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)   
 #' 
+#' \dontrun{
+#' # You can get a better fit by letting the learning rate change with "accel"
+#' # For instance
+#' fit <- qgam(list(accel ~ s(times, k=20, bs="ad"), ~ s(times)),
+#'            data = mcycle, qu = 0.8)
+#' 
+#' pred <- predict(fit, newdata = xSeq, se=TRUE)
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+#' lines(xSeq$times, pred$fit, lwd = 1)
+#' lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+#' lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)  
+#' }
+#' 
 #' #####
 #' # Multivariate Gaussian example
 #' ####
@@ -55,15 +70,14 @@
 #' set.seed(2)
 #' dat <- gamSim(1,n=400,dist="normal",scale=2)
 #' 
-#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.5)
+#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.5)
 #' plot(fit, scale = FALSE, pages = 1)      
 #' 
 #' ######
 #' # Heteroscedastic example
 #' ######
-#' \dontrun{
 #' set.seed(651)
-#' n <- 5000
+#' n <- 2000
 #' x <- seq(-4, 3, length.out = n)
 #' X <- cbind(1, x, x^2)
 #' beta <- c(0, 1, 1)
@@ -74,16 +88,15 @@
 #' names(dataf) <- c("y", "x")
 #' 
 #' fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-#'             data = dataf, qu = 0.95, lsig = -1.16)
+#'             data = dataf, qu = 0.95)
 #' 
 #' plot(x, dat, col = "grey", ylab = "y")
 #' tmp <- predict(fit, se = TRUE)
-#' lines(x, tmp$fit[ , 1])
-#' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-#' }
+#' lines(x, tmp$fit)
+#' lines(x, tmp$fit + 2 * tmp$se.fit, col = 2)
+#' lines(x, tmp$fit - 2 * tmp$se.fit, col = 2)
 #'
-qgam <- function(form, data, qu, lsig = NULL, err = 0.05, 
+qgam <- function(form, data, qu, lsig = NULL, err = NULL, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                  control = list(), argGam = NULL)
 {
@@ -91,24 +104,27 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
-
+  
   # Setting up control parameter (mostly used by tuneLearnFast)
-  ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = if(is.formula(form)){"identity"}else{list("identity", "log")})
+  ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = "identity")
   
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
   
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
-    fam <- "elf"
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam)) }
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam)) }
     varHat <- ctrl$gausFit$sig2
+    formL <- form
   } else {
-    fam <- "elflss"
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) }
+    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam)) }
     varHat <- 1/ctrl$gausFit$fit[ , 2]^2
-  }   
+    formL <- form[[1]]
+  }
   
+  # Get loss smoothness
+  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = ctrl$gausFit) }
+
   # Selecting the learning rate sigma
   learn <- NULL
   if( is.null(lsig) ) {  
@@ -118,20 +134,29 @@ qgam <- function(form, data, qu, lsig = NULL, err = 0.05,
     err <- learn$err # Over-writing err parameter!
   }
   
-  # Fit model for fixed log-sigma
   # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
-  if( fam=="elf" && is.null(argGam$start) ) { 
-    argGam$start <- coef(ctrl$gausFit) + c(quantile(ctrl$gausFit$residuals, qu), rep(0, length(coef(ctrl$gausFit))-1))  
+  if( is.null(argGam$start) ) {
+    coefGau <- coef( ctrl$gausFit )
+    # Need to extract coefficients belonging to model for mean (not variance)
+    if( is.list(ctrl$gausFit$formula) ){ 
+      lpi <- attr(predict(ctrl$gausFit, newdata = ctrl$gausFit$model[1:2, , drop = FALSE], type = "lpmatrix"), "lpi")
+      coefGau <- coefGau[ lpi[[1]] ] 
+    }
+    # Shift mean fit to quantile of interest
+    argGam$start <- coefGau + c(quantile(residuals(ctrl$gausFit, type="response"), qu), rep(0, length(coefGau) - 1)) 
   }
+  
   co <- err * sqrt(2*pi*varHat) / (2*log(2))
   
-  fit <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, co = co, theta = lsig), "data" = data), argGam))
+  # Fit model for fixed log-sigma
+  fit <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = qu, co = co, theta = lsig)), "data" = quote(data)), argGam))
   
   fit$calibr <- learn
   
   class(fit) <- c("qgam", class(fit))
   
   return( fit )
+  
 }
 
 

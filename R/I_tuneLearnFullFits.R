@@ -8,8 +8,8 @@
   
   # Create gam object for full data fits
   mainObj <- do.call("gam", c(list("formula" = form, 
-                                   "family" = get(fam)(qu = qu, co = NA, theta = NA, link = ctrl$link), 
-                                   "data" = data, "fit" = FALSE), 
+                                   "family" = quote(elf(qu = qu, co = NA, theta = NA, link = ctrl$link)), 
+                                   "data" = quote(data), "fit" = FALSE), 
                               argGam))
   
   # Create reparametrization list for... 
@@ -20,11 +20,9 @@
   } # these are needed for sandwich calibration
   
   # Store degrees of freedom for each value of lsig
-  tmp <- pen.edf(gausFit)
-  if( length(tmp) )
-  {
-    edfStore <- matrix(NA, nt, length(tmp) + 1)
-    colnames(edfStore) <- c("lsig", names( tmp ))
+  tmp <- pen.edf( gausFit )
+  if( length(tmp) ) {
+    edfStore <- list( )
   } else {
     edfStore <- NULL
   } 
@@ -38,7 +36,7 @@
     
     convProb <- FALSE # Variable indicating convergence problems
     withCallingHandlers({
-      fit <- do.call("gam", c(list("G" = mainObj, "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam)) 
+      fit <- do.call("gam", c(list("G" = quote(mainObj), "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam)) 
     }, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
@@ -48,8 +46,10 @@
         invokeRestart("muffleWarning")
       }
     })
-    
-    if( !is.null(edfStore) ) { edfStore[ii, ] <- c(lsig[ii], pen.edf(fit)) }
+  
+    if( !is.null(edfStore) ) { 
+      edfStore[[ii]] <- c(lsig[ii], pen.edf(fit)) 
+    }
     
     # Create prediction matrix (only in the first iteration)
     if( ii == 1 ){
@@ -88,6 +88,11 @@
     }
     
   } 
+  
+  if( !is.null(edfStore) ){
+    edfStore <- do.call("rbind", edfStore)
+    colnames(edfStore) <- c("lsig", names( pen.edf(fit) ))
+  }
   
   return( list("store" = store, 
                "edfStore" = edfStore, 

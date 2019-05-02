@@ -10,7 +10,9 @@
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param lsig A vector of value of the log learning rate (log(sigma)) over which the calibration loss function is evaluated.
 #' @param qu The quantile of interest. Should be in (0, 1).
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+#'            Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+#'            The old default was \code{err=0.05}.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -21,7 +23,7 @@
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
 #'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
-#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
 #'                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
 #'                                       data.}
 #'                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
@@ -63,7 +65,6 @@
 #' sigSeq <- seq(1.5, 5, length.out = 10)
 #' closs <- tuneLearn(form = accel~s(times,k=20,bs="ad"), 
 #'                    data = mcycle, 
-#'                    err = 0.05, 
 #'                    lsig = sigSeq, 
 #'                    qu = 0.5)
 #' 
@@ -74,7 +75,7 @@
 #' abline(v = best, lty = 2)
 #' 
 #' # Fit using the best sigma
-#' fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.05, lsig = best)
+#' fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, lsig = best)
 #' summary(fit)
 #' 
 #' pred <- predict(fit, se=TRUE)
@@ -84,7 +85,7 @@
 #' lines(mcycle$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 #' lines(mcycle$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)                        
 #'
-tuneLearn <- function(form, data, lsig, qu, err = 0.05, 
+tuneLearn <- function(form, data, lsig, qu, err = NULL, 
                       multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                       control = list(), argGam = NULL)
 { 
@@ -97,7 +98,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   
   # Setting up control parameter
   ctrl <- list( "loss" = "calFast", "sam" = "boot", "K" = 50, "b" = 0, "vtype" = "m", "epsB" = 1e-5, "verbose" = FALSE, 
-                "link" = if(is.formula(form)){"identity"}else{list("identity", "log")}, 
+                "link" = "identity", 
                 "progress" = ifelse(multicore, "none", "text") )
   
   # Checking if the control list contains unknown names. Entries in "control" substitute those in "ctrl"
@@ -115,20 +116,23 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   # Gaussian fit, used for initializations 
   # NB Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(form) ) {
-    fam <- "elf"
-    gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam))
     varHat <- gausFit$sig2
     initM <- list("start" = coef(gausFit) + c(quantile(gausFit$residuals, qu), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = NULL) # let gam() initialize sp via initial.spg() 
+    formL <- form
   } else {
-    fam <- "elflss"
-    gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
     initM <- list("start" = NULL, "in.out" = NULL) # Have no cluse
+    formL <- form[[1]]
   }  
   
+  # Get loss smoothness
+  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit) }
+  
   # For each value of 'lsig' fit on full data
-  main <- .tuneLearnFullFits(lsig = lsig, form = form, fam = fam, qu = qu, err = err,
+  main <- .tuneLearnFullFits(lsig = lsig, form = formL, fam = "elf", qu = qu, err = err,
                              ctrl = ctrl, data = data, argGam = argGam, gausFit = gausFit, 
                              varHat = varHat, initM = initM)
   
@@ -136,7 +140,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   outLoss <- if( ctrl$loss == "calFast" ){ # Fast calibration (loss already calculated) OR ...
     sapply(main[["store"]], "[[", "loss")
   } else { # ... bootstrapping or cross-validation
-    .tuneLearnBootstrapping(lsig = lsig, form = form, fam = fam, qu = qu, ctrl = ctrl, 
+    .tuneLearnBootstrapping(lsig = lsig, form = formL, fam = "elf", qu = qu, ctrl = ctrl, 
                             data = data, store = main[["store"]], pMat = main[["pMat"]], 
                             argGam = argGam, multicore = multicore, cluster = cluster, 
                             ncores = ncores, paropts = paropts)
@@ -152,6 +156,7 @@ tuneLearn <- function(form, data, lsig, qu, err = 0.05,
   attr(out, "class") <- "learn"
   
   return( out )
+  
 }
 
 

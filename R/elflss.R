@@ -5,9 +5,10 @@
 #'              to work in conjuction with the general GAM fitting methods of Wood et al. (2017), implemented by
 #'              \code{mgcv}. It differs from the \code{elf} family, because here the scale of the density 
 #'              (sigma, aka the learning rate) can depend of the covariates, while in 
-#'              while in \code{elf} it is a single scalar. At the moment the family is mainly intended for internal use, 
-#'              use the \code{qgam} function to fit quantile GAMs based on ELF.
-#'  
+#'              while in \code{elf} it is a single scalar. NB this function was use within the \code{qgam} function, but
+#'              since \code{qgam} version 1.3 quantile models with varying learning rate are fitted using different methods
+#'              (a parametric location-scale model, see Fasiolo et al. (2017) for details.).
+#'              
 #' @param link vector of two characters indicating the link function for the quantile location and for the log-scale.
 #' @param qu parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.
 #' @param co positive vector of constants used to determine parameter lambda of the ELF density (lambda = co / sigma).
@@ -34,7 +35,7 @@
 #' dataf <- data.frame(cbind(dat, x))
 #' names(dataf) <- c("y", "x")
 #' 
-#' # Fit median using elf directly: NOT RECOMMENDED
+#' # Fit median using elflss directly: NOT RECOMMENDED
 #' fit <- gam(list(y~s(x, bs = "cr"), ~ s(x, bs = "cr")), 
 #'            family = elflss(theta = 0, co = rep(0.2, n), qu = 0.5), 
 #'            data = dataf)
@@ -43,18 +44,9 @@
 #' tmp <- predict(fit, se = TRUE)
 #' lines(x, tmp$fit[ , 1])
 #' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)      
+#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2) 
+#' }     
 #' 
-#' # Use qgam: RECOMMENDED
-#' fit <- qgam(list(y~s(x, bs = "cr"), ~ s(x, bs = "cr")), 
-#'             data = dataf, qu = 0.5, err = 0.2, lsig = 0) 
-#' 
-#' plot(x, dat, col = "grey", ylab = "y")
-#' tmp <- predict(fit, se = TRUE)
-#' lines(x, tmp$fit[ , 1])
-#' lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-#' lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-#' }
 #'
 ## (c) Simon N. Wood & Matteo Fasiolo
 ## 2013-2017. Released under GPL2.

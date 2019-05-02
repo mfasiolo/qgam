@@ -9,8 +9,9 @@
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
-#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
-#'            same length of \code{qu}. See Fasiolo et al. (2016) for details.
+#' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+#'            Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+#'            The old default was \code{err=0.05}.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -21,7 +22,7 @@
 #'                have the correct environment set up for computing. 
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
 #'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
-#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+#'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
 #'                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
 #'                                       data.}
 #'                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
@@ -78,12 +79,10 @@
 #' set.seed(5235)
 #' tun <- tuneLearnFast(form = accel~s(times,k=20,bs="ad"), 
 #'                      data = mcycle, 
-#'                      err = 0.05, 
 #'                      qu = 0.2)
 #' 
 #' # Fit for quantile 0.2 using the best sigma
-#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2,
-#'             err = 0.05, lsig = tun$lsig)
+#' fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.2, lsig = tun$lsig)
 #' 
 #' pred <- predict(fit, se=TRUE)
 #' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -95,18 +94,15 @@
 #' ###
 #' # Multiple quantile fits
 #' ###
-#' \dontrun{
 #' # Calibrate learning rate on a grid
 #' quSeq <- c(0.25, 0.5, 0.75)
 #' set.seed(5235)
 #' tun <- tuneLearnFast(form = accel~s(times, k=20, bs="ad"), 
 #'                      data = mcycle, 
-#'                      err = 0.05, 
 #'                      qu = quSeq)
 #' 
 #' # Fit using estimated sigmas
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq,
-#'              err = 0.05, lsig = tun$lsig)
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq, lsig = tun$lsig)
 #' 
 #' # Plot fitted quantiles
 #' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
@@ -114,10 +110,28 @@
 #' for(iq in quSeq){
 #'   pred <- qdo(fit, iq, predict)
 #'   lines(mcycle$times, pred, col = 2)
-#' }   
-#' }                
+#' }  
+#' 
+#' \dontrun{
+#' # You can get a better fit by letting the learning rate change with "accel"
+#' # For instance
+#' tun <- tuneLearnFast(form = list(accel ~ s(times, k=20, bs="ad"), ~ s(times)), 
+#'                       data = mcycle, 
+#'                       qu = quSeq)
+#' 
+#' fit <- mqgam(list(accel ~ s(times, k=20, bs="ad"), ~ s(times)),
+#'              data = mcycle, qu = quSeq, lsig = tun$lsig)
+#' 
+#' # Plot fitted quantiles
+#' plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", 
+#'      ylim = c(-150, 80))
+#' for(iq in quSeq){
+#'   pred <- qdo(fit, iq, predict)
+#'   lines(mcycle$times, pred, col = 2)
+#' }
+#' } 
 #'
-tuneLearnFast <- function(form, data, qu, err = 0.05,
+tuneLearnFast <- function(form, data, qu, err = NULL,
                           multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                           control = list(), argGam = NULL)
 { 
@@ -127,9 +141,9 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   n <- nrow(data)
   nq <- length(qu)
   
-  if( length(err) != nq ){
-    if(length(err) == 1) { 
-      err <- rep(err, nq) 
+  if( !is.null(err) && length(err) != nq ){
+    if(length(err) == 1) {
+      err <- rep(err, nq)
     } else {
       stop("\"err\" should either be a scalar or a vector of the same length as \"qu\".")
     }
@@ -140,7 +154,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                 "init" = NULL, "brac" = log( c(1/2, 2) ),  "K" = 50,
                 "redWd" = 10, "tol" = .Machine$double.eps^0.25, "aTol" = 0.05, "b" = 0,
                 "gausFit" = NULL,
-                "link" = if(is.formula(form)){"identity"}else{list("identity", "log")},
+                "link" = "identity",
                 "verbose" = FALSE, "progress" = TRUE )
   
   # Checking if the control list contains unknown names
@@ -168,17 +182,17 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
-    fam <- "elf"                      
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam)) } else { gausFit <- ctrl$gausFit }
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam)) } else { gausFit <- ctrl$gausFit }
     varHat <- gausFit$sig2
+    formL <- form
   } else {
-    fam <- "elflss"                 
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam)) } else { gausFit <- ctrl$gausFit }
-    varHat <- 1/gausFit$fit[ , 2]^2
+    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam)) } else { gausFit <- ctrl$gausFit }
+    varHat <- 1 / gausFit$fit[ , 2]^2
+    formL <- form[[1]]
   }
   
   # Order quantiles so that those close to the median are dealt with first
-  oQu <- order( abs(qu-0.5) )
+  oQu <- order( abs(qu - 0.5) )
   
   # (Optional) Initializing the search range for sigma
   if( is.null(ctrl[["init"]]) ){
@@ -195,11 +209,11 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   }
   
   # Create gam object for full data fits
-  mObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, co = NA, theta = NA, link = ctrl$link), 
-                                "data" = data, "fit" = FALSE), argGam))
+  mObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), 
+                                "data" = quote(data), "fit" = FALSE), argGam))
   
   # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = NA, co = NA, theta = NA, link = ctrl$link), "data" = data, 
+  bObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), "data" = quote(data), 
                                 "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, fit = FALSE), argGam))
   
   # Preparing bootstrap object for gam.fit3
@@ -207,7 +221,7 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   
   # Preparing reparametrization list and hide it within mObj. This will be needed by the sandwich calibration
   if( ctrl$loss == "calFast" ){
-    mObj$hidRepara <- if(is.formula(form)) { 
+    mObj$hidRepara <- if(is.formula(formL)) { 
       .prepBootObj(obj = mObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ] 
     } else { 
       bObj$Sl 
@@ -224,14 +238,6 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                     "EXXT" = crossprod(pMat, pMat) / n,                    # E(xx^T)
                     "EXEXT" = tcrossprod( colMeans(pMat), colMeans(pMat))) # E(x)E(x)^T
         
-  # Calibration uses the linear predictor for the quantile location, we discard the rest 
-  lpi <- attr(gausFit$formula, "lpi")
-  if( !is.null(lpi) ){  
-    if( length(lpi[[2]]) ){ lpi[[2]] <- lpi[[2]][ -length(lpi[[2]]) ] } # Need to discard intercept for later
-    pMat <- pMat[ , lpi[[1]]] # "lpi" attribute lost here, re-inserted in next line 
-    attr(pMat, "lpi") <- lpi 
-  }
-  
   if( multicore ){ 
     # Create cluster
     tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
@@ -260,6 +266,8 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
   
   # Here we need bTol > aTol, otherwise the new bracket will be too close to the probable solution
   bTol <- 4*ctrl$aTol
+  
+  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit) }
   
   if(ctrl$progress){ cat("Estimating learning rate. Each dot corresponds to a loss evaluation. \n") }
   for(ii in 1:nq)
@@ -359,10 +367,15 @@ tuneLearnFast <- function(form, data, qu, err = 0.05,
                            multicore, cluster, ncores, paropts, 
                            control, argGam)
 {
-  
+
   # Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(mObj$formula) ) { # Extended Gam OR ...
-    initM <- list("start" = coef(gausFit) + c(quantile(gausFit$residuals, qu), rep(0, length(coef(gausFit))-1)), 		
+    coefGau <- coef(gausFit)
+    if( is.list(gausFit$formula) ){ 
+      lpi <- attr(predict(gausFit, newdata = gausFit$model[1:2, , drop = FALSE], type = "lpmatrix"), "lpi")
+      coefGau <- coefGau[ lpi[[1]] ] 
+      }
+    initM <- list("start" = coefGau + c(quantile(residuals(gausFit, type="response"), qu), rep(0, length(coefGau)-1)), 		
                   "in.out" = NULL) # let gam() initialize sp via initial.spg() 		
   } else { # ... GAMLSS		
     initM <- list("start" = NULL, "in.out" = NULL) # I have no clue

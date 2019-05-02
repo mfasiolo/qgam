@@ -8,10 +8,11 @@
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu A vectors of quantiles of interest. Each entry should be in (0, 1).
 #' @param lsig The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-#'             parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
+#'             parameter is estimated by posterior calibration described in Fasiolo et al. (2017). Obviously, the function is much faster
 #'             if the user provides a value. 
 #' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
-#'            same length of \code{qu}. See Fasiolo et al. (2016) for details.
+#'            same length of \code{qu}. Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+#'            The old default was \code{err=0.05}.
 #' @param multicore If TRUE the calibration will happen in parallel.
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
@@ -48,20 +49,19 @@
 #' set.seed(2)
 #' dat <- gamSim(1, n=300, dist="normal", scale=2)
 #' 
-#' fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8))
+#' fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = c(0.2, 0.8))
 #' 
 #' invisible( qdo(fit, 0.2, plot, pages = 1) )
 #' 
 #' #####
 #' # Univariate "car" example
 #' ####
-#' \dontrun{
 #' library(qgam); library(MASS)
 #' 
 #' # Fit for quantile 0.8 using the best sigma
 #' quSeq <- c(0.2, 0.4, 0.6, 0.8)
 #' set.seed(6436)
-#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
+#' fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq)
 #' 
 #' # Plot the fit
 #' xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -70,9 +70,8 @@
 #'   pred <- qdo(fit, iq, predict, newdata = xSeq)
 #'   lines(xSeq$times, pred, col = 2)
 #' }
-#' }
 #'
-mqgam <- function(form, data, qu, lsig = NULL, err = 0.05, 
+mqgam <- function(form, data, qu, lsig = NULL, err = NULL, 
                   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                   control = list(), argGam = NULL)
 {
@@ -81,7 +80,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
   
-  if( length(err) != nq ){
+  if( !is.null(err) && length(err) != nq ){
     if(length(err) == 1) { 
       err <- rep(err, nq) 
     } else {
@@ -90,7 +89,7 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   }
   
   # Setting up control parameter (mostly used by tuneLearnFast)
-  ctrl <- list( "gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = if(is.formula(form)){"identity"}else{list("identity", "log")})
+  ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = "identity")
   
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
@@ -99,9 +98,9 @@ mqgam <- function(form, data, qu, lsig = NULL, err = 0.05,
   if( is.null(ctrl[["gausFit"]]) )
   {
     if( is.formula(form) ){
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = data), argGam))
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam))
     } else {
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = data, "family" = gaulss(b=ctrl[["b"]])), argGam))
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam))
     }
     ctrl[["gausFit"]] <- gausFit
   }

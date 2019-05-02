@@ -4,9 +4,10 @@
 \alias{qgam}
 \title{Fit a smooth additive quantile regression model}
 \usage{
-qgam(form, data, qu, lsig = NULL, err = 0.05,
-  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
-  1, paropts = list(), control = list(), argGam = NULL)
+qgam(form, data, qu, lsig = NULL, err = NULL,
+  multicore = !is.null(cluster), cluster = NULL,
+  ncores = detectCores() - 1, paropts = list(), control = list(),
+  argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -17,10 +18,12 @@ By default the variables are taken from environment(formula): typically the envi
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
 \item{lsig}{The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
+parameter is estimated by posterior calibration described in Fasiolo et al. (2017). Obviously, the function is much faster
 if the user provides a value.}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+The old default was \code{err=0.05}.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -57,7 +60,7 @@ library(qgam); library(MASS)
 
 # Fit for quantile 0.5 using the best sigma
 set.seed(6436)
-fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = 0.5)
+fit <- qgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = 0.5)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -67,6 +70,19 @@ lines(xSeq$times, pred$fit, lwd = 1)
 lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
 lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)   
 
+\dontrun{
+# You can get a better fit by letting the learning rate change with "accel"
+# For instance
+fit <- qgam(list(accel ~ s(times, k=20, bs="ad"), ~ s(times)),
+           data = mcycle, qu = 0.8)
+
+pred <- predict(fit, newdata = xSeq, se=TRUE)
+plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c(-150, 80))
+lines(xSeq$times, pred$fit, lwd = 1)
+lines(xSeq$times, pred$fit + 2*pred$se.fit, lwd = 1, col = 2)
+lines(xSeq$times, pred$fit - 2*pred$se.fit, lwd = 1, col = 2)  
+}
+
 #####
 # Multivariate Gaussian example
 ####
@@ -74,15 +90,14 @@ library(qgam)
 set.seed(2)
 dat <- gamSim(1,n=400,dist="normal",scale=2)
 
-fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.5)
+fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.5)
 plot(fit, scale = FALSE, pages = 1)      
 
 ######
 # Heteroscedastic example
 ######
-\dontrun{
 set.seed(651)
-n <- 5000
+n <- 2000
 x <- seq(-4, 3, length.out = n)
 X <- cbind(1, x, x^2)
 beta <- c(0, 1, 1)
@@ -93,14 +108,13 @@ dataf <- data.frame(cbind(dat, x))
 names(dataf) <- c("y", "x")
 
 fit <- qgam(list(y~s(x, k = 30, bs = "cr"), ~ s(x, k = 30, bs = "cr")), 
-            data = dataf, qu = 0.95, lsig = -1.16)
+            data = dataf, qu = 0.95)
 
 plot(x, dat, col = "grey", ylab = "y")
 tmp <- predict(fit, se = TRUE)
-lines(x, tmp$fit[ , 1])
-lines(x, tmp$fit[ , 1] + 3 * tmp$se.fit[ , 1], col = 2)
-lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
-}
+lines(x, tmp$fit)
+lines(x, tmp$fit + 2 * tmp$se.fit, col = 2)
+lines(x, tmp$fit - 2 * tmp$se.fit, col = 2)
 
 }
 \references{

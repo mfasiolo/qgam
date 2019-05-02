@@ -11,6 +11,7 @@
 #' @param link the link function between the linear predictor and the quantile location.
 #' @param qu parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.
 #' @param co positive constant used to determine parameter lambda of the ELF density (lambda = co / sigma).
+#'           Can be vector valued.
 #' @return An object inheriting from mgcv's class \code{extended.family}.
 #' @details This function is meant for internal use only.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com> and Simon N. Wood. 
@@ -30,7 +31,7 @@
 #' plot(fit, scale = FALSE, pages = 1)     
 #' 
 #' # Using qgam: RECOMMENDED
-#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
+#' fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.8)
 #' plot(fit, scale = FALSE, pages = 1)      
 #'
 #'
@@ -122,7 +123,8 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
     co <- get(".co")
     
     sig <- exp(theta)
-    lam <- co / sig
+    lam <- mean(co / sig)
+    sig <- co / lam
     
     z <- (y - drop(mu)) / sig
     
@@ -139,7 +141,8 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
     
     ## derivatives of the deviance...
     sig <- exp(theta)
-    lam <- co / sig
+    lam <- mean(co / sig)
+    sig <- co / lam
     
     z <- (y - mu) / sig
     
@@ -182,7 +185,8 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
     sig <- exp(theta)
     tau <- get(".qu")
     co <- get(".co")
-    lam <- co / sig
+    lam <- mean(co / sig)
+    sig <- co / lam
     
     z <- (y - drop(mu)) / sig
     
@@ -195,7 +199,8 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
     tau <- get(".qu")
     co <- get(".co")
     sig <- exp(theta)
-    lam <- co / sig
+    lam <- mean(co / sig)
+    sig <- co / lam
     
     ## the log saturated likelihood function.
     ls <- sum( w * ((1-tau)*lam*log1p(-tau) + lam*tau*log(tau) - log(lam * sig * beta(lam*(1-tau), lam*tau))) )

@@ -4,9 +4,10 @@
 \alias{tuneLearn}
 \title{Tuning the learning rate for Gibbs posterior}
 \usage{
-tuneLearn(form, data, lsig, qu, err = 0.05, multicore = !is.null(cluster),
-  cluster = NULL, ncores = detectCores() - 1, paropts = list(),
-  control = list(), argGam = NULL)
+tuneLearn(form, data, lsig, qu, err = NULL,
+  multicore = !is.null(cluster), cluster = NULL,
+  ncores = detectCores() - 1, paropts = list(), control = list(),
+  argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -18,7 +19,9 @@ By default the variables are taken from environment(formula): typically the envi
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
 
-\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). See Fasiolo et al. (2016) for details.}
+\item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
+Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+The old default was \code{err=0.05}.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -34,7 +37,7 @@ have the correct environment set up for computing.}
 
 \item{control}{A list of control parameters for \code{tuneLearn} with entries: \itemize{
                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
-                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2016) for details.
+                                      credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
                                       If \code{loss=="pin"} then log(sigma) approximately minimizes the pinball loss on the out-of-sample
                                       data.}
                   \item{\code{sam} = sampling scheme use: \code{sam=="boot"} corresponds to bootstrapping and \code{sam=="kfold"} to k-fold
@@ -82,7 +85,6 @@ set.seed(41444)
 sigSeq <- seq(1.5, 5, length.out = 10)
 closs <- tuneLearn(form = accel~s(times,k=20,bs="ad"), 
                    data = mcycle, 
-                   err = 0.05, 
                    lsig = sigSeq, 
                    qu = 0.5)
 
@@ -93,7 +95,7 @@ best <- sigSeq[ which.min(closs$loss) ]
 abline(v = best, lty = 2)
 
 # Fit using the best sigma
-fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, err = 0.05, lsig = best)
+fit <- qgam(accel~s(times,k=20,bs="ad"), data = mcycle, qu = 0.5, lsig = best)
 summary(fit)
 
 pred <- predict(fit, se=TRUE)

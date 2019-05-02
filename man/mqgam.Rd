@@ -4,9 +4,10 @@
 \alias{mqgam}
 \title{Fit multiple smooth additive quantile regression models}
 \usage{
-mqgam(form, data, qu, lsig = NULL, err = 0.05,
-  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() -
-  1, paropts = list(), control = list(), argGam = NULL)
+mqgam(form, data, qu, lsig = NULL, err = NULL,
+  multicore = !is.null(cluster), cluster = NULL,
+  ncores = detectCores() - 1, paropts = list(), control = list(),
+  argGam = NULL)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -17,11 +18,12 @@ By default the variables are taken from environment(formula): typically the envi
 \item{qu}{A vectors of quantiles of interest. Each entry should be in (0, 1).}
 
 \item{lsig}{The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
-parameter is estimated by posterior calibration described in Fasiolo et al. (2016). Obviously, the function is much faster
+parameter is estimated by posterior calibration described in Fasiolo et al. (2017). Obviously, the function is much faster
 if the user provides a value.}
 
 \item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). If it is a vector, it should be of the 
-same length of \code{qu}. See Fasiolo et al. (2016) for details.}
+same length of \code{qu}. Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
+The old default was \code{err=0.05}.}
 
 \item{multicore}{If TRUE the calibration will happen in parallel.}
 
@@ -67,20 +69,19 @@ library(qgam)
 set.seed(2)
 dat <- gamSim(1, n=300, dist="normal", scale=2)
 
-fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = c(0.2, 0.8))
+fit <- mqgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = c(0.2, 0.8))
 
 invisible( qdo(fit, 0.2, plot, pages = 1) )
 
 #####
 # Univariate "car" example
 ####
-\dontrun{
 library(qgam); library(MASS)
 
 # Fit for quantile 0.8 using the best sigma
 quSeq <- c(0.2, 0.4, 0.6, 0.8)
 set.seed(6436)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq)
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq)
 
 # Plot the fit
 xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
@@ -88,7 +89,6 @@ plot(mcycle$times, mcycle$accel, xlab = "Times", ylab = "Acceleration", ylim = c
 for(iq in quSeq){
   pred <- qdo(fit, iq, predict, newdata = xSeq)
   lines(xSeq$times, pred, col = 2)
-}
 }
 
 }

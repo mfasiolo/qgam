@@ -15,7 +15,7 @@
   }
   
   # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = form, "family" = get(fam)(qu = qu, co = NA, theta = NA, link = ctrl$link), "data" = data, 
+  bObj <- do.call("gam", c(list("formula" = form, "family" = quote(elf(qu = qu, co = NA, theta = NA, link = ctrl$link)), "data" = quote(data), 
                                 "sp" = if(length(store[[1]]$sp)){store[[1]]$sp}else{NULL}, fit = FALSE), argGam))
   
   # Preparing bootstrap object for gam.fit3

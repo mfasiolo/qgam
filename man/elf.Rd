@@ -13,7 +13,8 @@ elf(theta = NULL, link = "identity", qu, co)
 
 \item{qu}{parameter in (0, 1) representing the chosen quantile. For instance, to fit the median choose \code{qu=0.5}.}
 
-\item{co}{positive constant used to determine parameter lambda of the ELF density (lambda = co / sigma).}
+\item{co}{positive constant used to determine parameter lambda of the ELF density (lambda = co / sigma).
+Can be vector valued.}
 }
 \value{
 An object inheriting from mgcv's class \code{extended.family}.
@@ -39,7 +40,7 @@ fit <- gam(y~s(x0)+s(x1)+s(x2)+s(x3),
 plot(fit, scale = FALSE, pages = 1)     
 
 # Using qgam: RECOMMENDED
-fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, err = 0.05, qu = 0.8)
+fit <- qgam(y~s(x0)+s(x1)+s(x2)+s(x3), data=dat, qu = 0.8)
 plot(fit, scale = FALSE, pages = 1)      
 
 

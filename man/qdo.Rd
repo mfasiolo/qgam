@@ -32,8 +32,7 @@ library(qgam); library(MASS)
 
 quSeq <- c(0.4, 0.6)
 set.seed(737)
-fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, err = 0.05, qu = quSeq, 
-             control = list("tol" = 0.01)) # <- semi-sloppy tolerance to speed-up calibration 
+fit <- mqgam(accel~s(times, k=20, bs="ad"), data = mcycle, qu = quSeq)
 
 qdo(fit, 0.4, summary)
 invisible(qdo(fit, 0.4, plot, pages = 1))

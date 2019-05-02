@@ -15,7 +15,7 @@
   
   # Full data fit
   withCallingHandlers({
-    mFit <- do.call("gam", c(list("G" = mObj, "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam))}, warning = function(w) {
+    mFit <- do.call("gam", c(list("G" = quote(mObj), "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam))}, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
       {

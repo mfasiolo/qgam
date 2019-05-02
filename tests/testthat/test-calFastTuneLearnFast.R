@@ -4,15 +4,14 @@ context("calFastTuneLearnFast")
 test_that("calFastTuneLearnFast", {
   
   set.seed(41334)
-  #par(mfrow = c(2, 2))
-  #par(mar = c(5.1, 4.1, 0.1, 0.1))
-  for(ii in 1:1){ #### !!!!!!!!!!   set to 1:4 to test also elfss
+  par(mfrow = c(2, 2))
+  par(mar = c(5.1, 4.1, 0.1, 0.1))
+  for(ii in 1:4){ #### !!!!!!!!!!   set to 1:4 to test also elfss
     if(ii == 1){
       ### 1) 4D Gaussian example
       dat <- gamSim(1, n=1000, dist="normal", scale=2, verbose=FALSE)
       form <- y ~ s(x0)+s(x1)+s(x2)+s(x3)
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.1
     }
     
     if(ii == 2){
@@ -30,7 +29,6 @@ test_that("calFastTuneLearnFast", {
       dat <- data.frame(cbind(y, x))
       names(dat) <- c("y", "x")
       qus <- c(0.1, 0.95, 0.99)
-      err <- 0.1
     }
     
     if( ii == 3 ){
@@ -47,7 +45,6 @@ test_that("calFastTuneLearnFast", {
       bs <- "cr"
       formF <- y~s(x, k = 30, bs = bs) + s(z, k = 30, bs = bs) + s(w, k = 30, bs = bs)
       qus <- c(0.01, 0.5, 0.95)
-      err <- 0.1
     }
     
     if(ii == 4){
@@ -55,7 +52,6 @@ test_that("calFastTuneLearnFast", {
       dat <- gamSim(1, n=1000, dist="normal", scale=2, verbose=FALSE)
       form <- list(y ~ s(x0)+s(x1)+s(x2)+s(x3), ~ s(x0))
       qus <- c(0.01, 0.5, 0.99)
-      err <- 0.1
     }
     
     # Checking that the loss evaluated by tuneLearn is close to that evaluated
@@ -66,7 +62,6 @@ test_that("calFastTuneLearnFast", {
       calibr[["fast"]] <-  tuneLearnFast(form,
                                          data = dat,
                                          qu = qus,
-                                         err = err, 
                                          control = list("progress" = FALSE))
       
       calibr[["slow"]] <- lapply(1:length(qus), 
@@ -75,7 +70,6 @@ test_that("calFastTuneLearnFast", {
                                              data = dat,
                                              qu = qus[.kk],
                                              lsig = calibr[["fast"]]$store[[.kk]][1, ],
-                                             err = err, 
                                              control = list("progress" = FALSE))})
     }, NA)
     
