@@ -38,9 +38,9 @@ check.qgam <- function(obj,
 {
   
   svpar <- par(no.readonly = TRUE) 
-  cqcheck(obj = obj, v = as.matrix(obj$fitted.values)[ , 1], nbin = nbin, xlab = "Fitted values", ...)
-  par(svpar) 
-  
+  cqcheck(obj = obj, v = as.matrix(obj$fitted.values)[ , 1], nbin = nbin, 
+          xlab = "Fitted values", main = "Proportion of neg. resid.", ...)
+
   ## Checking bias induced by having smoothed the loss
   # Here we are estimating E( Phi(y, mu, lam*sig) - I(y > mu) | x ) using a Gaussian GAM
   co <- obj$family$getCo()
@@ -104,6 +104,9 @@ check.qgam <- function(obj,
     cat("it might be worth increasing k. \n\n")
     printCoefmat(kchck,digits=3);
   }
+  
+  # Reset graphical parameters
+  par(svpar) 
   
   return( invisible(NULL) )
   

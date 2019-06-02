@@ -10,8 +10,8 @@
 \item{obj}{the output of a call to \code{tuneLearnFast}.}
 
 \item{sel}{integer vector determining which of the plots will be produced. For instance if \code{sel = c(1, 3)} only
-the 1st and 3rd plots are showed. No entry of \code{sel} can be bigger than the number of quantiles considered
-in the original \code{tuneLearnFast()} call. That is, if estimated the learning rate for \code{qu = c(0.1, 0.4)},
+the 1st and 3rd plots are showed. No entry of \code{sel} can be bigger than one plus the number of quantiles considered
+in the original \code{tuneLearnFast()} call. That is, if we estimated the learning rate for \code{qu = c(0.1, 0.4)},
 then \code{max(sel)} must be <= 3.}
 
 \item{...}{currently not used, here only for compatibility reasons.}
