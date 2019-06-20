@@ -2,7 +2,7 @@ Package: qgam
 Type: Package
 Title: Smooth Additive Quantile Regression Models
 Version: 1.3.0
-Date: 2019-05-01
+Date: 2019-06-06
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
              person("Simon", "N. Wood", role = c("ctb")), 
              person("Margaux", "Zaffran", role = c("ctb")), 
