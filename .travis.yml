@@ -3,3 +3,6 @@
 language: R
 sudo: false
 cache: packages
+env:
+   global:
+     - R_BUILD_ARGS="--resave-data"
