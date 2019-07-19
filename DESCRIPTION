@@ -19,6 +19,7 @@ Description: Smooth additive quantile regression models, fitted using
     fits non-parametric quantile regression models.
 License: GPL (>=2)
 Depends:
+    R (>= 3.5.0),
     mgcv (>= 1.8-28)
 Imports:
     shiny,
