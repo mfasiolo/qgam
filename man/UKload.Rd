@@ -14,7 +14,7 @@ data(UKload)
 \describe{
 \item{NetDemand}{net electricity demand between 11:30am and 12am.}
 \item{wM}{instantaneous temperature, averaged over several English cities.}
-\item{wM_s95}{exponential smooth of \code{wM}, that is \code{wM_s95[i] = a*wM[i] + (1-a)*wM_s95[i]} with \code{a=0.05}}.
+\item{wM_s95}{exponential smooth of \code{wM}, that is \code{wM_s95[i] = a*wM_s95[i-1] + (1-a)*wM[i]} with \code{a=0.95}}.
 \item{Posan}{periodic index in \code{[0, 1]} indicating the position along the year.}
 \item{Dow}{factor variable indicating the day of the week.}
 \item{Trend}{progressive counter, useful for defining the long term trend.}
