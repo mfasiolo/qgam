@@ -182,11 +182,21 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   
   # Gaussian fit, used for initialization
   if( is.formula(form) ) {
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam)) } else { gausFit <- ctrl$gausFit }
+    gausFit <- if( is.null(ctrl[["gausFit"]]) ) { 
+      do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                            "family" = gaussian(link=ctrl[["link"]]))), argGam) 
+    } else { 
+      ctrl$gausFit 
+    }
     varHat <- gausFit$sig2
     formL <- form
   } else {
-    if( is.null(ctrl[["gausFit"]]) ) { gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam)) } else { gausFit <- ctrl$gausFit }
+    gausFit <- if( is.null(ctrl[["gausFit"]]) ) { 
+      do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                            "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam)) 
+    } else { 
+      ctrl$gausFit 
+    }
     varHat <- 1 / gausFit$fit[ , 2]^2
     formL <- form[[1]]
   }

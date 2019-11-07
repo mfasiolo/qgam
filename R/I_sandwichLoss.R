@@ -39,7 +39,8 @@
   } else { # Extended GAM version 
     
     # Observed Fisher information and penalty matrix
-    OFI <- crossprod( sqrt(mFit$working.weights) * X )
+    woW <- mFit$working.weights # NB: these can be negative
+    OFI <- crossprod(sign(woW)*sqrt(abs(woW))*X, sqrt(abs(woW))*X)  
     P <- .getPenMatrix(q = ncol(X), UrS = repar$UrS, sp = log(mFit$sp), Mp = repar$Mp, U1 = repar$U1)
     
   }

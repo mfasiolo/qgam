@@ -113,11 +113,17 @@ qgam <- function(form, data, qu, lsig = NULL, err = NULL,
   
   # Gaussian fit, used for initializations 
   if( is.formula(form) ) {
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam)) }
+    if( is.null(ctrl[["gausFit"]]) ) { 
+      ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                            "family" = gaussian(link=ctrl[["link"]]))), argGam)
+    }
     varHat <- ctrl$gausFit$sig2
     formL <- form
   } else {
-    if( is.null(ctrl[["gausFit"]]) ) { ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam)) }
+    if( is.null(ctrl[["gausFit"]]) ) { 
+      ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                            "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam)) 
+    }
     varHat <- 1/ctrl$gausFit$fit[ , 2]^2
     formL <- form[[1]]
   }
@@ -149,7 +155,7 @@ qgam <- function(form, data, qu, lsig = NULL, err = NULL,
   co <- err * sqrt(2*pi*varHat) / (2*log(2))
   
   # Fit model for fixed log-sigma
-  fit <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = qu, co = co, theta = lsig)), "data" = quote(data)), argGam))
+  fit <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = qu, co = co, theta = lsig, link = ctrl$link)), "data" = quote(data)), argGam))
   
   fit$calibr <- learn
   

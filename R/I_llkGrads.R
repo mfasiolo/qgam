@@ -99,7 +99,7 @@
     
     # [3] Transform into derivatives wrt regression coefficients
     # The i-th column of 'grads' is the score of the i-th likelihood component 
-    grads <- l1 * X
+    grads <- drop(l1) * X
     
   }
   

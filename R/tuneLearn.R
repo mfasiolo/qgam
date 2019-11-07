@@ -112,17 +112,19 @@ tuneLearn <- function(form, data, lsig, qu, err = NULL,
   
   n <- nrow(data)
   nt <- length(lsig)
-
+  
   # Gaussian fit, used for initializations 
   # NB Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(form) ) {
-    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam))
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                     "family" = gaussian(link=ctrl[["link"]]))), argGam)
     varHat <- gausFit$sig2
     initM <- list("start" = coef(gausFit) + c(quantile(gausFit$residuals, qu), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = NULL) # let gam() initialize sp via initial.spg() 
     formL <- form
   } else {
-    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam))
+    gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                     "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam))
     varHat <- 1/gausFit$fit[ , 2]^2
     initM <- list("start" = NULL, "in.out" = NULL) # Have no cluse
     formL <- form[[1]]

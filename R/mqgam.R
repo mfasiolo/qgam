@@ -98,9 +98,11 @@ mqgam <- function(form, data, qu, lsig = NULL, err = NULL,
   if( is.null(ctrl[["gausFit"]]) )
   {
     if( is.formula(form) ){
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data)), argGam))
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                       "family" = gaussian(link=ctrl[["link"]]))), argGam)
     } else {
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), "family" = gaulss(b=ctrl[["b"]])), argGam))
+      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
+                                       "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam))
     }
     ctrl[["gausFit"]] <- gausFit
   }
