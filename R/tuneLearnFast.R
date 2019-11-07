@@ -184,7 +184,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   if( is.formula(form) ) {
     gausFit <- if( is.null(ctrl[["gausFit"]]) ) { 
       do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                            "family" = gaussian(link=ctrl[["link"]]))), argGam) 
+                            "family" = gaussian(link=ctrl[["link"]])), argGam)) 
     } else { 
       ctrl$gausFit 
     }

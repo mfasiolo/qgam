@@ -117,7 +117,7 @@ tuneLearn <- function(form, data, lsig, qu, err = NULL,
   # NB Initializing smoothing parameters using gausFit is a very BAD idea
   if( is.formula(form) ) {
     gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                                     "family" = gaussian(link=ctrl[["link"]]))), argGam)
+                                     "family" = gaussian(link=ctrl[["link"]])), argGam))
     varHat <- gausFit$sig2
     initM <- list("start" = coef(gausFit) + c(quantile(gausFit$residuals, qu), rep(0, length(coef(gausFit))-1)), 
                   "in.out" = NULL) # let gam() initialize sp via initial.spg() 
