@@ -3,3 +3,9 @@
 language: R
 sudo: false
 cache: packages
+jobs:
+  include:
+    - os: linux
+      dist: trusty
+    - os: osx
+      osx_image: xcode8.2
