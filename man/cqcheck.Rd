@@ -4,8 +4,17 @@
 \alias{cqcheck}
 \title{Visually checking a fitted quantile model}
 \usage{
-cqcheck(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL,
-  lev = 0.05, scatter = FALSE, ...)
+cqcheck(
+  obj,
+  v,
+  X = NULL,
+  y = NULL,
+  nbin = c(10, 10),
+  bound = NULL,
+  lev = 0.05,
+  scatter = FALSE,
+  ...
+)
 }
 \arguments{
 \item{obj}{the output of a \code{qgam} call.}

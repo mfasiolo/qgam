@@ -4,10 +4,18 @@
 \alias{tuneLearnFast}
 \title{Fast learning rate calibration for the Gibbs posterior}
 \usage{
-tuneLearnFast(form, data, qu, err = NULL,
-  multicore = !is.null(cluster), cluster = NULL,
-  ncores = detectCores() - 1, paropts = list(), control = list(),
-  argGam = NULL)
+tuneLearnFast(
+  form,
+  data,
+  qu,
+  err = NULL,
+  multicore = !is.null(cluster),
+  cluster = NULL,
+  ncores = detectCores() - 1,
+  paropts = list(),
+  control = list(),
+  argGam = NULL
+)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}

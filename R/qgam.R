@@ -26,7 +26,6 @@
 #'                \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 #'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
-#' @param ... additional arguments passed to \code{mgcv::gam}.
 #' @return A \code{gamObject}. See \code{?gamObject}.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at

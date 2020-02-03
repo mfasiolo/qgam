@@ -4,10 +4,19 @@
 \alias{qgam}
 \title{Fit a smooth additive quantile regression model}
 \usage{
-qgam(form, data, qu, lsig = NULL, err = NULL,
-  multicore = !is.null(cluster), cluster = NULL,
-  ncores = detectCores() - 1, paropts = list(), control = list(),
-  argGam = NULL)
+qgam(
+  form,
+  data,
+  qu,
+  lsig = NULL,
+  err = NULL,
+  multicore = !is.null(cluster),
+  cluster = NULL,
+  ncores = detectCores() - 1,
+  paropts = list(),
+  control = list(),
+  argGam = NULL
+)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}
@@ -43,8 +52,6 @@ used (see \code{?elf} and \code{?elflss} for defaults). All other control parame
 
 \item{argGam}{A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.}
-
-\item{...}{additional arguments passed to \code{mgcv::gam}.}
 }
 \value{
 A \code{gamObject}. See \code{?gamObject}.

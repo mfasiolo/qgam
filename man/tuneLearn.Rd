@@ -4,10 +4,19 @@
 \alias{tuneLearn}
 \title{Tuning the learning rate for Gibbs posterior}
 \usage{
-tuneLearn(form, data, lsig, qu, err = NULL,
-  multicore = !is.null(cluster), cluster = NULL,
-  ncores = detectCores() - 1, paropts = list(), control = list(),
-  argGam = NULL)
+tuneLearn(
+  form,
+  data,
+  lsig,
+  qu,
+  err = NULL,
+  multicore = !is.null(cluster),
+  cluster = NULL,
+  ncores = detectCores() - 1,
+  paropts = list(),
+  control = list(),
+  argGam = NULL
+)
 }
 \arguments{
 \item{form}{A GAM formula, or a list of formulae. See ?mgcv::gam details.}

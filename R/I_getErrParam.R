@@ -55,7 +55,7 @@
     # f / f'^2 = exp( log(f) - 2 * log(|f'|) ) but we avoid dividing by almost zero
     h <- (d*9 / (n*pi^4))^(1/3) * exp(lf0/3 - 2*lf1/3)
     
-    # Setting err to high might be problematic to here it can be at most 1
+    # Setting err too high might be problematic, so here it can be at most 1
     err[ii] <- min(h * 2 * log(2) / sqrt(2*pi), 1)
     
   }

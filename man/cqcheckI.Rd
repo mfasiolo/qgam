@@ -4,8 +4,15 @@
 \alias{cqcheckI}
 \title{Interactive visual checks for additive quantile fits}
 \usage{
-cqcheckI(obj, v, X = NULL, y = NULL, run = TRUE, width = "100\%",
-  height = "680px")
+cqcheckI(
+  obj,
+  v,
+  X = NULL,
+  y = NULL,
+  run = TRUE,
+  width = "100\%",
+  height = "680px"
+)
 }
 \arguments{
 \item{obj}{the output of a \code{qgam} call.}
