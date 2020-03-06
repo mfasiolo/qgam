@@ -16,7 +16,10 @@
 #' log1pexp(x) - log1p(exp(x))
 log1pexp <- function(x)
 {
-  indx <- .bincode(x, c(-Inf, -37, 18, 33.3, Inf), T)
+  indx <- .bincode(x, 
+                   c(-Inf, -37, 18, 33.3, Inf), 
+                   right = TRUE, 
+                   include.lowest = TRUE)
   
   kk <- which(indx==1)
   if( length(kk) ){  x[kk] <- exp(x[kk])  }

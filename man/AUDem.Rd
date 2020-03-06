@@ -5,7 +5,7 @@
 \description{
 Data set on electricity demand from Sidney, Australia. The data has been downloaded from \url{https://www.ausgrid.com.au}, and it originally contained electricity demand from 300 customers, at 30min resolution. We discarded 53
 customers because their demand was too irregular, and we integrated the demand data with temperature data from the
-National Climatic Data Center (\url{www.ncdc.noaa.gov}), covering the same period. 
+National Climatic Data Center, covering the same period. 
 } %- end description
 
 \usage{
