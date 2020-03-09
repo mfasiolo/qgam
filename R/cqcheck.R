@@ -158,7 +158,7 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
     }
     
     # For each bin: count number of responses that are smaller than the fitted quantile
-    indx <- as.factor( .bincode(x1, bound, T, T) )       # Attribute data to bins
+    indx <- as.factor( .bincode(x1, bound, TRUE, TRUE) )       # Attribute data to bins
     levels(indx) <- 1:nbin1
     bsize <- as.vector( table(indx) )                    # Count number of data in each bin
     indx <- as.integer(indx)
