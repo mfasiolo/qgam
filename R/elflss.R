@@ -182,17 +182,20 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
     
     if( !is.null(offset) ){ offset[[3]] <- 0 } # Not sure whether this is needed
     
+    discrete <- is.list(X)
+    
     jj <- attr(X,"lpi") ## extract linear predictor index
-    eta <- X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]
+    eta <- if (discrete) Xbd(X$Xd,coef,k=X$kd,ks=X$ks,ts=X$ts,dt=X$dt,v=X$v,qc=X$qc,drop=X$drop,lt=X$lpid[[1]]) else X[,jj[[1]],drop=FALSE]%*%coef[jj[[1]]]
     if( !is.null(offset[[1]]) ){ eta <- eta + offset[[1]] }
     mu <- family$linfo[[1]]$linkinv(eta)
     
-    eta1 <- X[,jj[[2]],drop=FALSE]%*%coef[jj[[2]]] + theta
+    eta1 <- if (discrete) Xbd(X$Xd,coef,k=X$kd,ks=X$ks,ts=X$ts,dt=X$dt,v=X$v,qc=X$qc,drop=X$drop,lt=X$lpid[[2]]) else X[,jj[[2]],drop=FALSE]%*%coef[jj[[2]]]
     if( !is.null(offset[[2]]) ){ eta1 <- eta1 + offset[[2]] }
     sig <-  family$linfo[[2]]$linkinv(eta1) 
     lam <- co / sig 
     
     n <- length(y)
+    if( is.null(wt) ) { wt <- numeric(n) + 1 }
     l1 <- matrix(0, n, 2)
     
     z <- (y - mu) / sig
@@ -291,7 +294,7 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
     ret$l <- l; ret
   } ## end ll
   
-  initialize <- expression({
+  initialize <- expression({ # COPIED EXACTLY FROM gaulss()
     ## idea is to regress g(y) on model matrix for mean, and then 
     ## to regress the corresponding log absolute residuals on 
     ## the model matrix for log(sigma) - may be called in both
@@ -304,31 +307,61 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
     use.unscaled <- if (!is.null(attr(E,"use.unscaled"))) TRUE else FALSE
     if (is.null(start)) {
       jj <- attr(x,"lpi")
-      if( !is.null(offset) ){ offset[[3]] <- 0 } # Not sure whether this is needed
-      start <- rep(0,ncol(x))
-      yt1 <- if (family$link[[1]]=="identity"){ y }else{ family$linfo[[1]]$linkfun(abs(y)+max(y)*1e-7) }
+      if (!is.null(offset)) offset[[3]] <- 0
+      yt1 <- if (family$link[[1]]=="identity") y else 
+        family$linfo[[1]]$linkfun(abs(y)+max(y)*1e-7)
       if (!is.null(offset[[1]])) yt1 <- yt1 - offset[[1]]
-      x1 <- x[,jj[[1]],drop=FALSE]
-      e1 <- E[,jj[[1]],drop=FALSE] ## square root of total penalty
-      #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
-      if (use.unscaled) {
-        qrx <- qr(rbind(x1,e1))
-        x1 <- rbind(x1,e1)
-        startji <- qr.coef(qr(x1),c(yt1,rep(0,nrow(E))))
-        startji[!is.finite(startji)] <- 0       
-      } else startji <- pen.reg(x1,e1,yt1)
-      start[jj[[1]]] <- startji
-      lres1 <- log(abs(y-family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%start[jj[[1]]])))
-      if (!is.null(offset[[2]])){ lres1 <- lres1 - offset[[2]] }
-      x1 <-  x[,jj[[2]],drop=FALSE];
-      e1 <- E[,jj[[2]],drop=FALSE]
-      #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
-      if (use.unscaled) {
-        x1 <- rbind(x1,e1)
-        startji <- qr.coef(qr(x1),c(lres1,rep(0,nrow(E))))   
+      if (is.list(x)) { ## discrete case
+        start <- rep(0,max(unlist(jj)))
+        R <- suppressWarnings(chol(XWXd(x$Xd,w=rep(1,length(y)),k=x$kd,ks=x$ks,ts=x$ts,dt=x$dt,v=x$v,qc=x$qc,nthreads=1,drop=x$drop,lt=x$lpid[[1]])+crossprod(E[,jj[[1]]]),pivot=TRUE))
+        Xty <- XWyd(x$Xd,rep(1,length(y)),yt1,x$kd,x$ks,x$ts,x$dt,x$v,x$qc,x$drop,lt=x$lpid[[1]])
+        piv <- attr(R,"pivot")
+        rrank <- attr(R,"rank") 
+        startji <- rep(0,ncol(R))
+        if (rrank<ncol(R)) {
+          R <- R[1:rrank,1:rrank]
+          piv <- piv[1:rrank]
+        }
+        startji[piv] <- backsolve(R,forwardsolve(t(R),Xty[piv]))
         startji[!is.finite(startji)] <- 0
-      } else startji <- pen.reg(x1,e1,lres1)
-      start[jj[[2]]] <- startji
+        start[jj[[1]]] <- startji
+        eta1 <- Xbd(x$Xd,start,k=x$kd,ks=x$ks,ts=x$ts,dt=x$dt,v=x$v,qc=x$qc,drop=x$drop,lt=x$lpid[[1]])
+        lres1 <- log(abs(y-family$linfo[[1]]$linkinv(eta1)))
+        if (!is.null(offset[[2]])) lres1 <- lres1 - offset[[2]]
+        R <- suppressWarnings(chol(XWXd(x$Xd,w=rep(1,length(y)),k=x$kd,ks=x$ks,ts=x$ts,dt=x$dt,v=x$v,qc=x$qc,nthreads=1,drop=x$drop,lt=x$lpid[[2]])+crossprod(E[,jj[[2]]]),pivot=TRUE))
+        Xty <- XWyd(x$Xd,rep(1,length(y)),lres1,x$kd,x$ks,x$ts,x$dt,x$v,x$qc,x$drop,lt=x$lpid[[2]])
+        piv <- attr(R,"pivot")
+        rrank <- attr(R,"rank")
+        startji <- rep(0,ncol(R))
+        if (rrank<ncol(R)) {
+          R <- R[1:rrank,1:rrank]
+          piv <- piv[1:rrank]
+        }
+        startji[piv] <- backsolve(R,forwardsolve(t(R),Xty[piv]))
+        start[jj[[2]]] <- startji
+      } else { ## regular case
+        start <- rep(0,ncol(x))
+        x1 <- x[,jj[[1]],drop=FALSE]
+        e1 <- E[,jj[[1]],drop=FALSE] ## square root of total penalty
+        #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
+        if (use.unscaled) {
+          qrx <- qr(rbind(x1,e1))
+          x1 <- rbind(x1,e1)
+          startji <- qr.coef(qr(x1),c(yt1,rep(0,nrow(E))))
+          startji[!is.finite(startji)] <- 0       
+        } else startji <- pen.reg(x1,e1,yt1)
+        start[jj[[1]]] <- startji
+        lres1 <- log(abs(y-family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%start[jj[[1]]])))
+        if (!is.null(offset[[2]])) lres1 <- lres1 - offset[[2]]
+        x1 <-  x[,jj[[2]],drop=FALSE];e1 <- E[,jj[[2]],drop=FALSE]
+        #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
+        if (use.unscaled) {
+          x1 <- rbind(x1,e1)
+          startji <- qr.coef(qr(x1),c(lres1,rep(0,nrow(E))))   
+          startji[!is.finite(startji)] <- 0
+        } else startji <- pen.reg(x1,e1,lres1)
+        start[jj[[2]]] <- startji
+      }  
     }
   }) ## initialize gaulss
   
@@ -362,7 +395,7 @@ elflss <- function(link = list("identity", "log"), qu, co, theta, remInter = TRU
                  linfo = stats, ## link information list
                  d2link=1,d3link=1,d4link=1, ## signals to fix.family.link that all done    
                  ls=1, ## signals that ls not needed here
+                 discrete.ok = TRUE,
                  available.derivs = 2 ## can use full Newton here
   ),class = c("general.family","extended.family","family"))
 } ## elflss
-
