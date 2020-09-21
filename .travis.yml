@@ -6,6 +6,5 @@ cache: packages
 jobs:
   include:
     - os: linux
-      dist: bionic
     - os: osx
       osx_image: xcode8.2
