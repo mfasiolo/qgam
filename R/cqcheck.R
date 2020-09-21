@@ -141,7 +141,7 @@ cqcheck <- function(obj, v, X = NULL, y = NULL, nbin = c(10, 10), bound = NULL, 
   
   # Calculating proportion of observation falling below estimate quantile curve
   n <- nrow(X)
-  mu <- as.matrix(predict(obj, newdata = X))[ , 1]
+  mu <- as.matrix(predict(obj, newdata = X, type = "response"))[ , 1]
   res <- (mu - y) > 0
   qu <- obj$family$getQu()
   
