@@ -6,6 +6,6 @@ cache: packages
 jobs:
   include:
     - os: linux
-      dist: trusty
+      dist: bionic
     - os: osx
       osx_image: xcode8.2
