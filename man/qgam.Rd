@@ -103,6 +103,7 @@ plot(fit, scale = FALSE, pages = 1)
 ######
 # Heteroscedastic example
 ######
+\dontrun{
 set.seed(651)
 n <- 2000
 x <- seq(-4, 3, length.out = n)
@@ -122,11 +123,14 @@ tmp <- predict(fit, se = TRUE)
 lines(x, tmp$fit)
 lines(x, tmp$fit + 2 * tmp$se.fit, col = 2)
 lines(x, tmp$fit - 2 * tmp$se.fit, col = 2)
+}
 
 }
 \references{
-Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at
-            \url{https://arxiv.org/abs/1707.03307}.
+Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
+            Fast calibrated additive quantile regression. 
+            Journal of the American Statistical Association (to appear).
+            \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com>.

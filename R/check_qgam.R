@@ -20,8 +20,10 @@
 #'          diagnostics (regarding the optimization), which are the same as in \code{mgcv::gam.check}. 
 #'          It reports also the maximum (k') and the selected degrees of freedom of each smooth term.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>, Simon N. Wood. 
-#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-#'             Available at \url{https://arxiv.org/abs/1707.03307}.
+#' @references Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
+#'             Fast calibrated additive quantile regression. 
+#'             Journal of the American Statistical Association (to appear).
+#'             \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
 #' @examples
 #' library(qgam)
 #' set.seed(0)

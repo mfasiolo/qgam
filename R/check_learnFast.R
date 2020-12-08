@@ -15,8 +15,10 @@
 #'          needs to increase \code{err} above its user-defined value to achieve convergence. Subsequent plots show, for each quantile, the value
 #'          of the loss function corresponding to each value of log(sigma) explored by Brent algorithm.
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
-#' @references Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. 
-#'             Available at \url{https://arxiv.org/abs/1707.03307}.
+#' @references Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
+#'             Fast calibrated additive quantile regression. 
+#'             Journal of the American Statistical Association (to appear).
+#'             \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
 #' @examples
 #' library(qgam)
 #' set.seed(525)
