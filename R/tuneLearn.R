@@ -112,6 +112,8 @@ tuneLearn <- function(form, data, lsig, qu, err = NULL,
   if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
   if( (ctrl$loss=="cal") && (ctrl$sam=="kfold")  ) stop("You can't use control$sam == \"kfold\" when ctrl$loss==\"cal\" ")
   
+  if( length(argGam$sp) && ctrl$loss != c("calFast") ){ stop("Cannot fix smoothing parameters unless control$loss == \"calFast\".") }
+  
   n <- nrow(data)
   nt <- length(lsig)
   

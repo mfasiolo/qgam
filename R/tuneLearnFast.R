@@ -172,6 +172,8 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   tol <- ctrl[["tol"]]
   brac <- ctrl[["brac"]]
   
+  if( length(argGam$sp) && ctrl$loss != c("calFast") ){ stop("Cannot fix smoothing parameters unless control$loss == \"calFast\".") }
+  
   # Sanity check
   if( tol > 0.1 * abs(diff(brac)) ) stop("tol > bracket_widths/10, choose smaller tolerance or larger bracket")
   
@@ -223,6 +225,9 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   # Create gam object for full data fits
   mObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), 
                                 "data" = quote(data), "fit" = FALSE), argGam))
+  
+  # Remove "sp" as it is already been fixed
+  argGam <- argGam[ names(argGam) != "sp" ]
   
   # Create gam object for bootstrap fits
   bObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), "data" = quote(data), 

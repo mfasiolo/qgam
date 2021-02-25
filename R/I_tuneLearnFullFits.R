@@ -12,6 +12,9 @@
                                    "data" = quote(data), "fit" = FALSE), 
                               argGam))
   
+  # Remove "sp" as it is already been fixed
+  argGam <- argGam[ names(argGam) != "sp" ]
+  
   # Create reparametrization list for... 
   repar <- if( is.list(form) ){ # ... GAMLSS case OR...
     Sl.setup( mainObj )
