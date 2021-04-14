@@ -29,6 +29,7 @@ Imports:
     grDevices
 Suggests:
     knitr,
+    rmarkdown,
     MASS,
     RhpcBLASctl,
     testthat
