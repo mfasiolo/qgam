@@ -7,4 +7,4 @@ jobs:
   include:
     - os: linux
     - os: osx
-      osx_image: xcode9.2
+      osx_image: xcode12
