@@ -42,7 +42,7 @@
       
       .datM <- lapply(.datM, function(.X) .X[-.badAll, ])
       
-      .datO <- c(list(.datI), .datM)
+      .datO <- c(list(.datI), .datM) # NOTE datO not dat0 !!!!!!
       
     }
     
@@ -50,7 +50,7 @@
     
     .datO <- na.omit( subset(.dat, select = .vars) )
     
-    if( is.null(.drop) || .drop ) { .dat0 <- droplevels( .dat0 ) }
+    if( is.null(.drop) || .drop ) { .dat0 <- droplevels( .datO ) }
     
   }
   
