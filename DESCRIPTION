@@ -1,8 +1,8 @@
 Package: qgam
 Type: Package
 Title: Smooth Additive Quantile Regression Models
-Version: 1.3.3
-Date: 2021-04-20
+Version: 1.3.4
+Date: 2021-11-21
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
              person("Simon", "N. Wood", role = c("ctb")), 
              person("Margaux", "Zaffran", role = c("ctb")), 
@@ -10,7 +10,8 @@ Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", rol
              person("Raphael", "Nedellec", role = c("ctb")))
 Maintainer: Matteo Fasiolo <matteo.fasiolo@gmail.com>
 Description: Smooth additive quantile regression models, fitted using
-    the methods of Fasiolo et al. (2017) <arXiv:1707.03307>. Differently from
+    the methods of Fasiolo et al. (2020) <doi:10.1080/01621459.2020.1725521>.
+    See Fasiolo at al. (2021) <doi:10.18637/jss.v100.i09> for an introduction to the package. Differently from
     'quantreg', the smoothing parameters are estimated automatically by marginal
     loss minimization, while the regression coefficients are estimated using either
     PIRLS or Newton algorithm. The learning rate is determined so that the Bayesian

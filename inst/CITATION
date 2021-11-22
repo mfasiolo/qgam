@@ -1,16 +1,22 @@
-citHeader("If you use qgam please cite our paper:")
-
-citEntry(
-         entry="Manual",
-         title="Fast calibrated additive quantile regression.",
-         author=personList(as.person("Matteo Fasiolo"), as.person("Yannig Goude"),
-                    as.person("Raphael Nedellec"), as.person("Simon N. Wood") ), 
-	 year=2017,
-	 url="https://arxiv.org/abs/1707.03307",
-	 textVersion=paste(
-			   "Fasiolo M., Goude Y., Nedellec R. and Wood S. N. (2017).",
-			   "Fast calibrated additive quantile regression.", 
-                           "URL: https://arxiv.org/abs/1707.03307" 
-			  ))	 
-
+bibentry(bibtype = "Article",
+  title        = "{qgam}: {B}ayesian Nonparametric Quantile Regression Modeling in {R}",
+  author       = c(person(given = "Matteo",
+                          family = "Fasiolo",
+                          email = "matteo.fasiolo@gmail.com"),
+                   person(given = c("Simon", "N."),
+                          family = "Wood"),
+                   person(given = "Margaux",
+                          family = "Zaffran"),
+                   person(given = "Rapha\\\"el",
+                          family = "Nedellec"),
+                   person(given = "Yannig",
+                          family = "Goude")),
+  journal      = "Journal of Statistical Software",
+  year         = "2021",
+  volume       = "100",
+  number       = "9",
+  pages        = "1--31",
+  doi          = "10.18637/jss.v100.i09",
+  header       = "To cite qgam in publications use:"
+)
 
