@@ -42,6 +42,9 @@
 #'             Fast calibrated additive quantile regression. 
 #'             Journal of the American Statistical Association (to appear).
 #'             \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
+#' @references Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2021. 
+#'             qgam: Bayesian Nonparametric Quantile Regression Modeling in R. 
+#'             Journal of Statistical Software, 100(9), 1-31, \doi{10.18637/jss.v100.i09}.
 #' @examples
 #' 
 #' #####
