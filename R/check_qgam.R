@@ -57,6 +57,14 @@ check.qgam <- function(obj,
   
   dat$bias <- plogis(res, 0, sig*lam) - as.numeric(res > 0)
   
+  # Need to handle offsets
+  offi <- which(sapply(names(dat), function(.x) grepl("offset(", .x, fixed=TRUE)))
+  if(length(offi)){
+    for(ii in offi){
+      names(dat)[ii] <- gsub(")","",gsub("offset(","",names(dat)[ii], fixed = TRUE)) 
+    }
+  }
+  
   fitBias <- gam(form, data = dat) 
   hist(fitBias$fitted.values, xlab = expression(F(hat(mu)) - F(mu[0])), main = "Bias due to smoothed loss")
   
