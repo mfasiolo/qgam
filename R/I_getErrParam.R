@@ -22,7 +22,7 @@
   # First use anova to find degrees of freedom of parametric terms in equation for location
   # Then find EDF of smooth terms in equation for location. unique() needed for "adaptive" smooths
   anv <- anova( gFit )
-  d <- sum( anv$pTerms.df[ !grepl("\\.1", rownames(anv$pTerms.table)) ] )
+  d <- sum(anv$pTerms.df[!grepl("\\.1", rownames(anv$pTerms.table))]) + ("(Intercept)" %in% names(anv$p.coeff))
   d <- d + sum( unique(pen.edf(gFit)[!grepl("s\\.1|te\\.1|ti\\.1|t2\\.1", names(pen.edf(gFit)))]) )
   
   # Estimate parameters of shash density on standardized residuals
