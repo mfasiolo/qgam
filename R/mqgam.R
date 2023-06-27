@@ -132,6 +132,11 @@ mqgam <- function(form, data, qu, lsig = NULL, err = NULL,
   # Fitting a quantile model for each qu
   out[["fit"]] <- lapply(1:nq, function(ii){
     
+    if( !is.null(out$calibr) ){
+      argGam$start <- learn$final_coef[[ii]]$start
+      argGam$in.out <- learn$final_coef[[ii]]$in.out
+    }
+    
     .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err[ii], multicore = FALSE, control = ctrl, argGam = argGam)
     
     # Removing data and smooth matrix to reduce memory requirements. There quantities

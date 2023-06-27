@@ -195,9 +195,11 @@
     }
   }
   
-  store <- rbind( sapply(store, "[[", "x"), sapply(store, "[[", "f") )
+  f_eval <- rbind( sapply(store, "[[", "x"), sapply(store, "[[", "f") )
+  ii_min <- which.min(f_eval[2, ])
+  final_coef <- store[[ii_min]]$initM
   
-  return( list("minimum" = x, "objective" = fx, "store" = store) )
+  return( list("minimum" = x, "objective" = fx, "store" = f_eval, "final_coef" = final_coef) )
 }
 
 ###################

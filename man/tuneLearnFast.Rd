@@ -85,10 +85,13 @@ A list with entries: \itemize{
                   \item{\code{lsig} = a vector containing the values of log(sigma) that minimize the loss function, 
                                       for each quantile.}
                   \item{\code{err} = the error bound used for each quantile. Generally each entry is identical to the
-                                     argument \code{err}, but in some cases the function increases it to enhance stabily.}
+                                     argument \code{err}, but in some cases the function increases it to enhance stability.}
                   \item{\code{ranges} = the search ranges by the Brent algorithm to find log-sigma, for each quantile. }
                   \item{\code{store} = a list, where the i-th entry is a matrix containing all the locations (1st row) at which
                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
+                  \item{\code{final_coef} = a list, where the i-th entry is a list with the estimated regression coefficients 
+                                            (\code{start}), smoothing parameters (\code{in.out$sp}) and scale parameter 
+                                            (\code{in.out$scale}, should always be equal to 1) at the optimal value of log(sigma).}
 }
 }
 \description{

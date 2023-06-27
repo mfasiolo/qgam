@@ -61,10 +61,13 @@
 #'                   \item{\code{lsig} = a vector containing the values of log(sigma) that minimize the loss function, 
 #'                                       for each quantile.}
 #'                   \item{\code{err} = the error bound used for each quantile. Generally each entry is identical to the
-#'                                      argument \code{err}, but in some cases the function increases it to enhance stabily.}
+#'                                      argument \code{err}, but in some cases the function increases it to enhance stability.}
 #'                   \item{\code{ranges} = the search ranges by the Brent algorithm to find log-sigma, for each quantile. }
 #'                   \item{\code{store} = a list, where the i-th entry is a matrix containing all the locations (1st row) at which
 #'                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
+#'                   \item{\code{final_coef} = a list, where the i-th entry is a list with the estimated regression coefficients 
+#'                                             (\code{start}), smoothing parameters (\code{in.out$sp}) and scale parameter 
+#'                                             (\code{in.out$scale}, should always be equal to 1) at the optimal value of log(sigma).}
 #' }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
 #' @references Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
@@ -279,6 +282,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   sigs <- efacts <- errors <- numeric(nq)
   rans <- matrix(NA, nq, 2)
   store <- vector("list", nq)
+  final_coef <- vector("list", nq)
   names(sigs) <- names(errors) <- rownames(rans) <- qu
   
   # Here we need bTol > aTol, otherwise the new bracket will be too close to the probable solution
@@ -308,6 +312,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
       
       # Store loss function evaluations
       store[[oi]] <- cbind(store[[oi]], res[["store"]])
+      final_coef[[oi]] <- res[["final_coef"]]
       lsig <- res$minimum
       
       # If solution not too close to boundary store results and determine bracket for next iteration
@@ -367,7 +372,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   
   names(sigs) <- qu
   
-  out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store)
+  out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store, "final_coef" = final_coef)
   attr(out, "class") <- "learnFast"
   
   # Close the cluster if it was opened inside this function

@@ -80,6 +80,7 @@
 #' ######
 #' # Heteroscedastic example
 #' ######
+#' \dontrun{
 #' set.seed(651)
 #' n <- 2000
 #' x <- seq(-4, 3, length.out = n)
@@ -99,6 +100,7 @@
 #' lines(x, tmp$fit)
 #' lines(x, tmp$fit + 2 * tmp$se.fit, col = 2)
 #' lines(x, tmp$fit - 2 * tmp$se.fit, col = 2)
+#' }
 #'
 qgam <- function(form, data, qu, lsig = NULL, err = NULL, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
@@ -142,6 +144,8 @@ qgam <- function(form, data, qu, lsig = NULL, err = NULL,
                            ncores = ncores, paropts = paropts, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
     err <- learn$err # Over-writing err parameter!
+    argGam$start <- learn$final_coef[[1]]$start
+    argGam$in.out <- learn$final_coef[[1]]$in.out
   }
   
   # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
