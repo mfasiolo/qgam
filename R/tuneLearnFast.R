@@ -216,11 +216,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
     # We assume lam~0 and we match the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
-    if( !is.list(form) ){
-      isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
-    } else {
-      isig <- log(sqrt( (ctrl[["b"]]+exp(coef(gausFit)["(Intercept).1"]))^2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
-    }
+    isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
   } else {
     isig <- ctrl[["init"]]
   }
@@ -241,11 +237,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   
   # Preparing reparametrization list and hide it within mObj. This will be needed by the sandwich calibration
   if( ctrl$loss == "calFast" ){
-    mObj$hidRepara <- if(is.formula(formL)) { 
-      .prepBootObj(obj = mObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ] 
-    } else { 
-      bObj$Sl 
-    } 
+    mObj$hidRepara <- .prepBootObj(obj = mObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ] 
   }
   
   # Create prediction design matrices for each bootstrap sample or CV fold
@@ -273,7 +265,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
     paropts[[".packages"]] <- NULL
     
     # Export bootstrap objects, prediction matrix and user-defined stuff
-    tmp <- unique( c("bObj", "pMat", "wb", "ctrl", "argGam", ".getVp", ".egamFit", ".gamlssFit", paropts[[".export"]]) )
+    tmp <- unique( c("bObj", "pMat", "wb", "ctrl", "argGam", ".egamFit", paropts[[".export"]]) )
     clusterExport(cluster, tmp, envir = environment())
     paropts[[".export"]] <- NULL
   }
@@ -390,18 +382,9 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
                            control, argGam)
 {
 
-  # Initializing smoothing parameters using gausFit is a very BAD idea
-  if( is.formula(mObj$formula) ) { # Extended Gam OR ...
-    coefGau <- coef(gausFit)
-    if( is.list(gausFit$formula) ){ 
-      lpi <- attr(predict(gausFit, newdata = gausFit$model[1:2, , drop = FALSE], type = "lpmatrix"), "lpi")
-      coefGau <- coefGau[ lpi[[1]] ] 
-      }
-    initM <- list("start" = coefGau + c(quantile(residuals(gausFit, type="response"), qu), rep(0, length(coefGau)-1)), 		
-                  "in.out" = NULL) # let gam() initialize sp via initial.spg() 		
-  } else { # ... GAMLSS		
-    initM <- list("start" = NULL, "in.out" = NULL) # I have no clue
-  }
+  # Initializing smoothing parameters using gausFit is a very BAD idea: let gam() initialize sp via initial.spg() 
+  initM <- list("mustart" = as.matrix(gausFit$fitted.values)[, 1] + quantile(residuals(gausFit, type="response"), qu), 		
+                "in.out" = NULL) 		
 
   init <- list("initM" = initM, "initB" = vector("list", control$K))
   

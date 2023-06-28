@@ -149,15 +149,9 @@ qgam <- function(form, data, qu, lsig = NULL, err = NULL,
   }
   
   # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
-  if( is.null(argGam$start) ) {
-    coefGau <- coef( ctrl$gausFit )
-    # Need to extract coefficients belonging to model for mean (not variance)
-    if( is.list(ctrl$gausFit$formula) ){ 
-      lpi <- attr(predict(ctrl$gausFit, newdata = ctrl$gausFit$model[1:2, , drop = FALSE], type = "lpmatrix"), "lpi")
-      coefGau <- coefGau[ lpi[[1]] ] 
-    }
+  if( is.null(argGam$start) && is.null(argGam$mustart)  ) {
     # Shift mean fit to quantile of interest
-    argGam$start <- coefGau + c(quantile(residuals(ctrl$gausFit, type="response"), qu), rep(0, length(coefGau) - 1)) 
+    argGam$mustart <- as.matrix(ctrl$gausFit$fitted.values)[, 1] + quantile(residuals(ctrl$gausFit, type="response"), qu)
   }
   
   co <- err * sqrt(2*pi*varHat) / (2*log(2))

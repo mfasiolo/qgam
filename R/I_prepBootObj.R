@@ -13,12 +13,6 @@
   # bootstrapped fits
   if( !is.null(eps) ) { ctrl$epsilon <- eps }  
   obj$control <- ctrl
-  
-  if (inherits(obj$family,"general.family")) {
-    obj$Sl <- Sl.setup(obj) ## prepare penalty sequence
-    obj$X <- Sl.initial.repara(obj$Sl,obj$X,both.sides=FALSE) ## re-parameterize accordingly
-  }
-  
   obj$rS <- mini.roots(obj$S, obj$off, ncol(obj$X), obj$rank)
   Ssp <- totalPenaltySpace(obj$S,obj$H,obj$off,ncol(obj$X))
   obj$Eb <- Ssp$E       ## balanced penalty square root for rank determination purposes 

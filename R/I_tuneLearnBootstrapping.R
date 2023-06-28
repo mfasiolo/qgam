@@ -34,9 +34,6 @@
     # Creating boot weights from boot indexes 
     bObj$w <- .wb
     
-    lpi <- attr(pMat, "lpi")
-    glss <- inherits(bObj$family, "general.family")
-    
     init <- NULL
     .z <- vector("list", ns)
     for( ii in ns:1 )  # START lsigma loop, from largest to smallest (because when lsig is small the estimation is harded)
@@ -52,23 +49,7 @@
       
       .offset <- bObj$offset
       
-      if( glss ){
-        init <- lapply(init, function(inp) Sl.initial.repara(bObj$Sl, inp, inverse=FALSE, both.sides=FALSE))
-        fit <- .gamlssFit(x=bObj$X, y=bObj$y, lsp=as.matrix(bObj$lsp0), Sl=bObj$Sl, weights=bObj$w, 
-                          offset=bObj$offset, family=bObj$family, control=bObj$control, 
-                          Mp=bObj$Mp, start=init, needVb=(ctrl$loss=="cal" && ctrl$vtype=="b"))
-        # In gamlss, we want to calibrate only the location and we need to reparametrize the coefficients
-        init <- betas <- Sl.initial.repara(bObj$Sl, fit$coef, inverse=TRUE, both.sides=FALSE)
-        betas <- betas[lpi[[1]]] 
-        
-        if( !is.null(.offset) && !is.null(.offset[[1]]) ){  
-          .offset <- .offset[[1]]  
-        } else {
-          .offset <- numeric( nrow(pMat) )
-        }
-        mu <- bObj$family$linfo[[1]]$linkinv( pMat %*% betas + .offset )
-      } else {
-        bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
+      bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef
         fit <- .egamFit(x=bObj$X, y=bObj$y, sp=as.matrix(bObj$lsp0), Eb=bObj$Eb, UrS=bObj$UrS,
                         offset=bObj$offset, U1=bObj$U1, Mp=bObj$Mp, family = bObj$family, weights=bObj$w,
                         control=bObj$control, null.coef=bObj$null.coef, 
@@ -77,11 +58,10 @@
         
         if( is.null(.offset) ){ .offset <- numeric( nrow(pMat) )  }
         mu <- bObj$family$linkinv( pMat %*% betas + .offset )
-      }
-      
+    
       if( ctrl$loss == "cal" ){ # (1) Return standardized deviations from full data fit OR ... 
         if( ctrl$vtype == "b" ){ # (2) Use variance of bootstrap fit OR ...
-          Vp <- .getVp(fit, bObj, bObj$lsp0, lpi)
+          Vp <- fit$Vb
           sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
         } else { # (2)  ... variance of the main fit
           sdev <- store[[ii]]$sdev
@@ -105,7 +85,7 @@
     registerDoParallel(cluster)
     
     # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
-    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "store", "argGam", ".getVp", ".egamFit", ".gamlssFit"), 
+    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "store", "argGam", ".egamFit"), 
                   envir = environment())
     environment(.getBootDev) <- .GlobalEnv
   }

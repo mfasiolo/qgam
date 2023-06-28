@@ -15,13 +15,9 @@
   # Remove "sp" as it is already been fixed
   argGam <- argGam[ names(argGam) != "sp" ]
   
-  # Create reparametrization list for... 
-  repar <- if( is.list(form) ){ # ... GAMLSS case OR...
-    Sl.setup( mainObj )
-  } else { # ... extended GAM case
-    .prepBootObj(obj = mainObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ]
-  } # these are needed for sandwich calibration
-  
+  # Create reparametrization list needed for sandwich calibration
+  repar <- .prepBootObj(obj = mainObj, eps = NULL, control = argGam$control)[ c("UrS", "Mp", "U1") ]
+
   # Store degrees of freedom for each value of lsig
   tmp <- pen.edf( gausFit )
   if( length(tmp) ) {
@@ -56,19 +52,12 @@
     
     # Create prediction matrix (only in the first iteration)
     if( ii == 1 ){
-      pMat <- pMatFull <- predict.gam(fit, type = "lpmatrix") 
-      lpi <- attr(pMat, "lpi")
-      if( !is.null(lpi) ){ 
-        pMat <- pMat[ , lpi[[1]]] # "lpi" attribute lost here
-        attr(pMat, "lpi") <- lpi
-      }
+      pMat <-  predict.gam(fit, type = "lpmatrix") 
     }
     
     sdev <- NULL 
     if(ctrl$loss %in% c("cal", "calFast") && ctrl$vtype == "m"){
       Vp <- fit$Vp
-      # In the gamlss case, we are interested only in the calibrating the location mode
-      if( !is.null(lpi) ){  Vp <- fit$Vp[lpi[[1]], lpi[[1]]]  }
       sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
     }
     
@@ -76,12 +65,12 @@
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
       if( ii == 1 ){
-        EXXT <- crossprod(pMatFull, pMatFull) / n                       # E(xx^T)
-        EXEXT <- tcrossprod( colMeans(pMatFull), colMeans(pMatFull) )   # E(x)E(x)^T
+        EXXT <- crossprod(pMat, pMat) / n                       # E(xx^T)
+        EXEXT <- tcrossprod( colMeans(pMat), colMeans(pMat) )   # E(x)E(x)^T
       }
-      Vbias <- .biasedCov(fit = fit, X = pMatFull, EXXT = EXXT, EXEXT = EXEXT, lpi = lpi)
+      Vbias <- .biasedCov(fit = fit, X = pMat, EXXT = EXXT, EXEXT = EXEXT)
       
-      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, XFull = pMatFull, sdev = sdev, repar = repar, 
+      store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, sdev = sdev, repar = repar, 
                                                  alpha = Vbias$alpha, VSim = Vbias$V), 
                           "convProb" = convProb)
     } else { # Bootstrapping or cross-validation: full data fit will be used when fitting the bootstrap datasets
