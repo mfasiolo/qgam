@@ -2,17 +2,11 @@
 # Get "err" parameter for automatic loss smoothness selection 
 ##############
 #
-.getErrParam <- function(qu, gFit){
+.getErrParam <- function(qu, gFit, varHat){
   
   # Estimated conditional mean and variance (latter could be constant)
-  if( is.list(gFit$formula) ) {
-    muHat <- gFit$fitted.values[ , 1]
-    varHat <- 1 / gFit$fitted.values[ , 2]^2
-  } else {
-    muHat <- gFit$fitted.values
-    varHat <- gFit$sig2
-  }
-  
+  muHat <- as.matrix(gFit$fitted.values)[ , 1]
+
   # Raw residuals from Gaussian regression, normalized using estimated conditional SD
   r <- ( gFit$y - muHat ) / sqrt( varHat )
 

@@ -6,6 +6,9 @@
 { 
   if(ctrl$progress){ cat(".")}
   
+  discrete <- !is.null(mObj$Xd)
+  gam_name <- ifelse(discrete, "bam", "gam")
+
   co <- err * sqrt(2*pi*varHat) / (2*log(2))
 
   mObj$family$putQu( qu )
@@ -14,7 +17,7 @@
   
   # Full data fit
   withCallingHandlers({
-    mFit <- do.call("gam", c(list("G" = quote(mObj), "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam))}, warning = function(w) {
+    mFit <- do.call(gam_name, c(list("G" = quote(mObj), "in.out" = initM[["in.out"]], mustart = initM[["mustart"]], "discrete" = discrete), argGam))}, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
       {
@@ -24,23 +27,30 @@
     })
   
   mMU <- mFit$fit
-  initM <- list("start" = coef(mFit), "in.out" = list("sp" = mFit$sp, "scale" = 1))
+  initM <- list("mustart" = mFit$fitted.values, "in.out" = list("sp" = mFit$sp, "scale" = 1))
   
   # Standard deviation of fitted quantile using full data
   sdev <- NULL 
   if(ctrl$loss %in% c("cal", "calFast") && ctrl$vtype == "m"){
     Vp <- mFit$Vp
-    sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
+    if(discrete){
+      sdev <- diagXVXd(X=mObj$Xd,V=Vp,k=mObj$kd,ks=mObj$ks,ts=mObj$ts,
+                       dt=mObj$dt,v=mObj$v,qc=mObj$qc,drop=mObj$drop)^.5
+    }else{
+      sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
+    }
   }
   
   if(ctrl$loss == "calFast"){ # Fast calibration OR ...
    
-    Vbias <- .biasedCov(fit = mFit, X = SStuff$XFull, EXXT = SStuff$EXXT, EXEXT = SStuff$EXEXT)
+    Vbias <- .biasedCov(fit = mFit, X = SStuff$XFull, EXXT = SStuff$EXXT, EXEXT = SStuff$EXEXT, mObj = mObj)
     outLoss <- .sandwichLoss(mFit = mFit, X = pMat, sdev = sdev, repar = mObj$hidRepara, 
-                             alpha = Vbias$alpha, VSim = Vbias$V)
+                             alpha = Vbias$alpha, VSim = Vbias$V, mObj = mObj)
     initB <- NULL
     
   } else { # ... bootstrapping or cross-validation
+    if(discrete){ stop("discrete = TRUE allowed only when \"control$loss == calFast\"")}
+    
     ## Function to be run in parallel (over boostrapped datasets)  
     # It has two sets of GLOBAL VARS
     # Set 1: bObj, pMat, wb, argGam, ctrl    (Exported by tuneLearnFast)

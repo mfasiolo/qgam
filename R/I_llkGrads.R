@@ -10,7 +10,9 @@
 # OUTPUT
 # - an n by p matrix where the i-th columns is the gradient of the i-th log-likelihood component
 #
-.llkGrads <- function(gObj, X, type = "DllkDb") {
+.llkGrads <- function(gObj, X, mObj, type = "DllkDb") {
+  
+  discrete <- !is.null(mObj$Xd)
   
   type <- match.arg(type, c("DllkDb", "DllkDeta"))
   
@@ -31,10 +33,16 @@
   lam <- co / sig
   
   if( is.null(offset) ){
-    offset <- numeric( nrow(X) )  
+    offset <- numeric( n )  
   }
   
-  eta <- X %*% beta + offset
+  if(discrete){
+    eta <- Xbd(X=mObj$Xd,beta=beta,k=mObj$kd,ks=mObj$ks,ts=mObj$ts,
+               dt=mObj$dt,v=mObj$v,qc=mObj$qc,drop=mObj$drop)
+  }else{
+    eta <- X %*% beta + offset
+  }
+  
   mu <- fam$linkinv( eta )
   
   z <- (y - mu) / sig
@@ -51,6 +59,8 @@
   # [2] Transform llk derivatives wrt mu to derivatives wrt linear predictor (eta)
   l1 <- l1 * ig1
   if( type == "DllkDeta" ){ return(list("l1" = as.matrix(l1), "sig" = sig)) }
+  
+  if(discrete){ stop("DllkDb not implemented when discrete = TRUE") }
   
   # [3] Transform into derivatives wrt regression coefficients
   # The i-th column of 'grads' is the score of the i-th likelihood component 

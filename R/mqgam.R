@@ -76,11 +76,13 @@
 #'   lines(xSeq$times, pred, col = 2)
 #' }
 #'
-mqgam <- function(form, data, qu, lsig = NULL, err = NULL, 
+mqgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL, 
                   multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                   control = list(), argGam = NULL)
 {
   nq <- length(qu)
+  
+  discrete <- .should_we_use_discrete(form = form, discrete = discrete)
   
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
@@ -99,24 +101,14 @@ mqgam <- function(form, data, qu, lsig = NULL, err = NULL,
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
   
-  # Initial Gaussian fit
-  if( is.null(ctrl[["gausFit"]]) )
-  {
-    if( is.formula(form) ){
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                                       "family" = gaussian(link=ctrl[["link"]])), argGam))
-    } else {
-      gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                                       "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam))
-    }
-    ctrl[["gausFit"]] <- gausFit
-  }
+  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  ctrl[["gausFit"]] <- tmp$gausFit
   
   # Output list
   out <- list()
   
   if( is.null(lsig) ) { # Selecting the learning rate sigma OR ....
-    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu,
+    learn <- tuneLearnFast(form = form, data = data, err = err, qu = qu, discrete = discrete,
                            multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,
                            control = ctrl, argGam = argGam)
     lsig <- learn$lsig
@@ -133,11 +125,11 @@ mqgam <- function(form, data, qu, lsig = NULL, err = NULL,
   out[["fit"]] <- lapply(1:nq, function(ii){
     
     if( !is.null(out$calibr) ){
-      argGam$start <- learn$final_coef[[ii]]$start
-      argGam$in.out <- learn$final_coef[[ii]]$in.out
+      argGam$mustart <- learn$final_fit[[ii]]$mustart
+      argGam$in.out <- learn$final_fit[[ii]]$in.out
     }
     
-    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err[ii], multicore = FALSE, control = ctrl, argGam = argGam)
+    .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err[ii], discrete = discrete, multicore = FALSE, control = ctrl, argGam = argGam)
     
     # Removing data and smooth matrix to reduce memory requirements. There quantities
     # are kept only inside the first fit ( qfit[[1]] )

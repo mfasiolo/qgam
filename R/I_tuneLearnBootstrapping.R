@@ -1,7 +1,7 @@
 ###############
 #### Internal function that does the bootstrapping or cross-validation
 ###############
-.tuneLearnBootstrapping <- function(lsig, form, fam, qu, ctrl, data, store, pMat, argGam, 
+.tuneLearnBootstrapping <- function(lsig, form, fam, qu, ctrl, data, store, pMat, gausFit, argGam, 
                                     multicore, cluster, ncores, paropts){
   
   n <- nrow(data)

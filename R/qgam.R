@@ -102,11 +102,15 @@
 #' lines(x, tmp$fit - 2 * tmp$se.fit, col = 2)
 #' }
 #'
-qgam <- function(form, data, qu, lsig = NULL, err = NULL, 
+qgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL, 
                  multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                  control = list(), argGam = NULL)
 {
   if( length(qu) > 1 ) stop("length(qu) > 1, so you should use mqgam()")
+  
+  discrete <- .should_we_use_discrete(form = form, discrete = discrete)
+  
+  gam_name <- ifelse(discrete, "bam", "gam")
   
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
@@ -117,48 +121,35 @@ qgam <- function(form, data, qu, lsig = NULL, err = NULL,
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
   
-  # Gaussian fit, used for initializations 
-  if( is.formula(form) ) {
-    if( is.null(ctrl[["gausFit"]]) ) { 
-      ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                                            "family" = gaussian(link=ctrl[["link"]])), argGam))
-    }
-    varHat <- ctrl$gausFit$sig2
-    formL <- form
-  } else {
-    if( is.null(ctrl[["gausFit"]]) ) { 
-      ctrl$gausFit <- do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                                            "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam)) 
-    }
-    varHat <- 1/ctrl$gausFit$fit[ , 2]^2
-    formL <- form[[1]]
-  }
+  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  gausFit <- tmp$gausFit
+  formL <- tmp$formL
+  varHat <- tmp$varHat
+  initM <- tmp$initM
   
   # Get loss smoothness
-  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = ctrl$gausFit) }
+  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit, varHat = varHat) }
 
   # Selecting the learning rate sigma
   learn <- NULL
   if( is.null(lsig) ) {  
-    learn <- tuneLearnFast(form = form, data = data, qu = qu, err = err, multicore = multicore, cluster = cluster, 
+    learn <- tuneLearnFast(form = form, data = data, qu = qu, discrete = discrete, err = err, multicore = multicore, cluster = cluster, 
                            ncores = ncores, paropts = paropts, control = ctrl, argGam = argGam)
     lsig <- learn$lsig
     err <- learn$err # Over-writing err parameter!
-    argGam$start <- learn$final_coef[[1]]$start
-    argGam$in.out <- learn$final_coef[[1]]$in.out
-  }
-  
-  # Do not use 'start' gausFit in gamlss case because it's not to clear how to deal with model for sigma
-  if( is.null(argGam$start) && is.null(argGam$mustart)  ) {
-    # Shift mean fit to quantile of interest
-    argGam$mustart <- as.matrix(ctrl$gausFit$fitted.values)[, 1] + quantile(residuals(ctrl$gausFit, type="response"), qu)
+    argGam$mustart <- learn$final_fit[[1]]$mustart
+    argGam$in.out <- learn$final_fit[[1]]$in.out
+  } else {
+    if( is.null(argGam$start) && is.null(argGam$mustart)  ) {
+      argGam$mustart <- initM$mustart
+    }
   }
   
   co <- err * sqrt(2*pi*varHat) / (2*log(2))
   
   # Fit model for fixed log-sigma
-  fit <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = qu, co = co, theta = lsig, link = ctrl$link)), 
-                               "data" = quote(data)), argGam))
+  fit <- do.call(gam_name, c(list("formula" = formL, "family" = quote(elf(qu = qu, co = co, theta = lsig, link = ctrl$link)), 
+                               "data" = quote(data), "discrete" = discrete), argGam))
   
   fit$calibr <- learn
   

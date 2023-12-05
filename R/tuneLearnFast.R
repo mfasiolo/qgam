@@ -65,8 +65,8 @@
 #'                   \item{\code{ranges} = the search ranges by the Brent algorithm to find log-sigma, for each quantile. }
 #'                   \item{\code{store} = a list, where the i-th entry is a matrix containing all the locations (1st row) at which
 #'                                        the loss function has been evaluated and its value (2nd row), for the i-th quantile.}
-#'                   \item{\code{final_coef} = a list, where the i-th entry is a list with the estimated regression coefficients 
-#'                                             (\code{start}), smoothing parameters (\code{in.out$sp}) and scale parameter 
+#'                   \item{\code{final_fit} = a list, where the i-th entry is a list with the estimated conditional quantile 
+#'                                             (\code{mustart}), smoothing parameters (\code{in.out$sp}) and scale parameter 
 #'                                             (\code{in.out$scale}, should always be equal to 1) at the optimal value of log(sigma).}
 #' }
 #' @author Matteo Fasiolo <matteo.fasiolo@@gmail.com>. 
@@ -136,10 +136,14 @@
 #' }
 #' } 
 #'
-tuneLearnFast <- function(form, data, qu, err = NULL,
+tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
                           multicore = !is.null(cluster), cluster = NULL, ncores = detectCores() - 1, paropts = list(),
                           control = list(), argGam = NULL)
 { 
+  discrete <- .should_we_use_discrete(form = form, discrete = discrete)
+  
+  gam_name <- ifelse(discrete, "bam", "gam")
+  
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
   
@@ -171,6 +175,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   if( !(ctrl$loss%in%c("calFast", "cal", "pin")) ) stop("control$loss should be either \"cal\", \"pin\" or \"calFast\" ")
   if( !(ctrl$sam%in%c("boot", "kfold")) ) stop("control$sam should be either \"boot\" or \"kfold\" ")
   if( (ctrl$loss=="cal") && (ctrl$sam=="kfold")  ) stop("You can't use control$sam == \"kfold\" when ctrl$loss==\"cal\" ")
+  if(discrete && ctrl$loss != "calFast"){ stop("discrete = TRUE can be used only with control$loss != \"calFast\"") }
   
   tol <- ctrl[["tol"]]
   brac <- ctrl[["brac"]]
@@ -187,26 +192,11 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
     wb <- lapply(1:ctrl[["K"]], function(ii) tabulate(which(tmp != ii), n)) 
   }
   
-  # Gaussian fit, used for initialization
-  if( is.formula(form) ) {
-    gausFit <- if( is.null(ctrl[["gausFit"]]) ) { 
-      do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                            "family" = gaussian(link=ctrl[["link"]])), argGam)) 
-    } else { 
-      ctrl$gausFit 
-    }
-    varHat <- gausFit$sig2
-    formL <- form
-  } else {
-    gausFit <- if( is.null(ctrl[["gausFit"]]) ) { 
-      do.call("gam", c(list("formula" = form, "data" = quote(data), 
-                            "family" = gaulss(link=list(ctrl[["link"]], "logb"), b=ctrl[["b"]])), argGam)) 
-    } else { 
-      ctrl$gausFit 
-    }
-    varHat <- 1 / gausFit$fit[ , 2]^2
-    formL <- form[[1]]
-  }
+  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  gausFit <- tmp$gausFit
+  formL <- tmp$formL
+  varHat <- tmp$varHat
+  initM <- tmp$initM
   
   # Order quantiles so that those close to the median are dealt with first
   oQu <- order( abs(qu - 0.5) )
@@ -216,21 +206,21 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
     # We assume lam~0 and we match the variance of a symmetric (median) Laplace density with that of the Gaussian fit.
     # This is an over-estimate for extreme quantiles, but experience suggests that it's better erring on the upper side.
     tmp <- 0.5 #qu[ oQu[1] ]
-    isig <- log(sqrt( gausFit$sig2 * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
+    isig <- log(sqrt( mean(varHat) * (tmp^2*(1-tmp)^2) / (2*tmp^2-2*tmp+1) ))
   } else {
     isig <- ctrl[["init"]]
   }
   
   # Create gam object for full data fits
-  mObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), 
-                                "data" = quote(data), "fit" = FALSE), argGam))
+  mObj <- do.call(gam_name, c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)),
+                                   "data" = quote(data), "fit" = FALSE, "discrete" = discrete), argGam))
   
   # Remove "sp" as it is already been fixed
   argGam <- argGam[ names(argGam) != "sp" ]
   
   # Create gam object for bootstrap fits
-  bObj <- do.call("gam", c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), "data" = quote(data), 
-                                "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, fit = FALSE), argGam))
+  bObj <- do.call(gam_name, c(list("formula" = formL, "family" = quote(elf(qu = NA, co = NA, theta = NA, link = ctrl$link)), "data" = quote(data),
+                                   "sp" = if(length(gausFit$sp)){gausFit$sp}else{NULL}, fit = FALSE, "discrete" = discrete), argGam))
   
   # Preparing bootstrap object for gam.fit3
   bObj <- .prepBootObj(obj = bObj, eps = ctrl$epsB, control = argGam$control)
@@ -243,13 +233,24 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   # Create prediction design matrices for each bootstrap sample or CV fold
   class( mObj ) <- c("gam", "glm", "lm") 
   mObj$coefficients <- rep(0, ncol(mObj$X))  # Needed to fool predict.gam
-  pMat <- predict.gam(mObj, newdata = data, type = "lpmatrix")
   
   # Stuff needed for the sandwich estimator
-  sandStuff <- list("XFull" = pMat,
-                    "EXXT" = crossprod(pMat, pMat) / n,                    # E(xx^T)
-                    "EXEXT" = tcrossprod( colMeans(pMat), colMeans(pMat))) # E(x)E(x)^T
-        
+  if(discrete){
+    pMat <- NULL
+    colmX <- XWyd(X=mObj$Xd,w=rep(1,n),y=rep(1,n),k=mObj$kd,ks=mObj$ks,
+                  ts=mObj$ts,dt=mObj$dt,v=mObj$v,qc=mObj$qc,drop=mObj$drop)/n
+    sandStuff <- list("XFull" = pMat,
+                      "EXXT" = XWXd(X=mObj$Xd,w=rep(1,n),k=mObj$kd,ks=mObj$ks,
+                                    ts=mObj$ts,dt=mObj$dt,v=mObj$v,qc=mObj$qc,
+                                    drop=mObj$drop)/n,  # E(xx^T)
+                      "EXEXT" = tcrossprod( colmX, colmX)) # E(x)E(x)^T
+  }else{
+    pMat <- predict.gam(mObj, newdata = data, type = "lpmatrix")
+    sandStuff <- list("XFull" = pMat,
+                      "EXXT" = crossprod(pMat, pMat) / n,                    # E(xx^T)
+                      "EXEXT" = tcrossprod( colMeans(pMat), colMeans(pMat))) # E(x)E(x)^T
+  }
+  
   if( multicore ){ 
     # Create cluster
     tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
@@ -274,13 +275,13 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   sigs <- efacts <- errors <- numeric(nq)
   rans <- matrix(NA, nq, 2)
   store <- vector("list", nq)
-  final_coef <- vector("list", nq)
+  final_fit <- vector("list", nq)
   names(sigs) <- names(errors) <- rownames(rans) <- qu
   
   # Here we need bTol > aTol, otherwise the new bracket will be too close to the probable solution
   bTol <- 4*ctrl$aTol
   
-  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit) }
+  if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit, varHat = varHat) }
   
   if(ctrl$progress){ cat("Estimating learning rate. Each dot corresponds to a loss evaluation. \n") }
   for(ii in 1:nq)
@@ -298,13 +299,13 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
       
       # Estimate log(sigma) using brent methods with current bracket (srange)
       res  <- .tuneLearnFast(mObj = mObj, bObj = bObj, pMat = pMat, sandStuff = sandStuff, wb = wb, qu = qu[oi], err = err[oi],
-                             srange = srange, gausFit = gausFit, varHat = varHat,
+                             srange = srange, gausFit = gausFit, varHat = varHat, initM = initM[[oi]],
                              multicore = multicore, cluster = cluster, ncores = ncores, paropts = paropts,  
                              control = ctrl, argGam = argGam)  
       
       # Store loss function evaluations
       store[[oi]] <- cbind(store[[oi]], res[["store"]])
-      final_coef[[oi]] <- res[["final_coef"]]
+      final_fit[[oi]] <- res[["final_fit"]]
       lsig <- res$minimum
       
       # If solution not too close to boundary store results and determine bracket for next iteration
@@ -364,7 +365,7 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
   
   names(sigs) <- qu
   
-  out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store, "final_coef" = final_coef)
+  out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store, "final_fit" = final_fit)
   attr(out, "class") <- "learnFast"
   
   # Close the cluster if it was opened inside this function
@@ -377,14 +378,10 @@ tuneLearnFast <- function(form, data, qu, err = NULL,
 ### Internal version, which works for a single quantile qu
 ########################################################################## 
 .tuneLearnFast <- function(mObj, bObj, pMat, sandStuff, wb, qu, err,
-                           srange, gausFit, varHat,
+                           srange, gausFit, varHat, initM,
                            multicore, cluster, ncores, paropts, 
                            control, argGam)
 {
-
-  # Initializing smoothing parameters using gausFit is a very BAD idea: let gam() initialize sp via initial.spg() 
-  initM <- list("mustart" = as.matrix(gausFit$fitted.values)[, 1] + quantile(residuals(gausFit, type="response"), qu), 		
-                "in.out" = NULL) 		
 
   init <- list("initM" = initM, "initB" = vector("list", control$K))
   

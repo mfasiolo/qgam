@@ -10,10 +10,10 @@
 # OUTPUT
 # - the estimate of cov(DlDeta * X) and the mixture parameter alpha in (0, 1) to be used.
 #
-.biasedCov <- function(fit, X, EXXT, EXEXT)
+.biasedCov <- function(fit, X, EXXT, EXEXT, mObj)
 {
   npar <- length( coef(fit) )
-  DllDeta <- .llkGrads(gObj = fit, X = X, type = "DllkDeta")
+  DllDeta <- .llkGrads(gObj = fit, X = X, mObj = mObj, type = "DllkDeta")
   ESS <- sum(abs(DllDeta$l1[ , 1]))^2 / sum(DllDeta$l1[ , 1]^2)
   
   # If DlDeta and X are independent: cov(DlDeta * X) = E(X*X^T) * E(DlDeta^2) - E(DlDeta)^2 * E(X)*E(X)^T 

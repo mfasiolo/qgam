@@ -35,7 +35,7 @@
     
     convProb <- FALSE # Variable indicating convergence problems
     withCallingHandlers({
-      fit <- do.call("gam", c(list("G" = quote(mainObj), "in.out" = initM[["in.out"]], "start" = initM[["start"]]), argGam)) 
+      fit <- do.call("gam", c(list("G" = quote(mainObj), "in.out" = initM[["in.out"]], "mustart" = initM[["mustart"]]), argGam)) 
     }, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
@@ -61,17 +61,17 @@
       sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
     }
     
-    initM <- list("start" = coef(fit), "in.out" = list("sp" = fit$sp, "scale" = 1))
+    initM <- list("mustart" = fit$fitted.values, "in.out" = list("sp" = fit$sp, "scale" = 1))
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
       if( ii == 1 ){
         EXXT <- crossprod(pMat, pMat) / n                       # E(xx^T)
         EXEXT <- tcrossprod( colMeans(pMat), colMeans(pMat) )   # E(x)E(x)^T
       }
-      Vbias <- .biasedCov(fit = fit, X = pMat, EXXT = EXXT, EXEXT = EXEXT)
+      Vbias <- .biasedCov(fit = fit, X = pMat, EXXT = EXXT, EXEXT = EXEXT, mObj = mainObj)
       
       store[[ii]] <- list("loss" = .sandwichLoss(mFit = fit, X = pMat, sdev = sdev, repar = repar, 
-                                                 alpha = Vbias$alpha, VSim = Vbias$V), 
+                                                 alpha = Vbias$alpha, VSim = Vbias$V, mObj = mainObj), 
                           "convProb" = convProb)
     } else { # Bootstrapping or cross-validation: full data fit will be used when fitting the bootstrap datasets
       store[[ii]] <- list("sp" = fit$sp, "fit" = fit$fitted, "co" = fit$family$getCo(), 
