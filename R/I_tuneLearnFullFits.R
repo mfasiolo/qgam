@@ -61,7 +61,8 @@
       sdev <- sqrt(rowSums((pMat %*% Vp) * pMat)) # same as sqrt(diag(pMat%*%Vp%*%t(pMat))) but (WAY) faster
     }
     
-    initM <- list("mustart" = fit$fitted.values, "in.out" = list("sp" = fit$sp, "scale" = 1))
+    initM <- list("mustart" = fit$fitted.values, 
+                  "in.out" = list("sp" = if(gam_name == "bam"){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
       if( ii == 1 ){

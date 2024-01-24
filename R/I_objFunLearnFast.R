@@ -27,7 +27,8 @@
     })
   
   mMU <- mFit$fit
-  initM <- list("mustart" = mFit$fitted.values, "in.out" = list("sp" = mFit$sp, "scale" = 1))
+  initM <- list("mustart" = mFit$fitted.values, 
+                "in.out" = list("sp" = if(gam_name == "bam"){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
   
   # Standard deviation of fitted quantile using full data
   sdev <- NULL 
