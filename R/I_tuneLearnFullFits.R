@@ -62,7 +62,7 @@
     }
     
     initM <- list("mustart" = fit$fitted.values, 
-                  "in.out" = list("sp" = if(gam_name == "bam"){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
+                  "in.out" = list("sp" = if(gam_name == "bam" & !is.null(mFit$full.sp)){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
     
     if( ctrl$loss == "calFast" ){ # Fast calibration OR ...
       if( ii == 1 ){
