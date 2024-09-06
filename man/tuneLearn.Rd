@@ -9,6 +9,7 @@ tuneLearn(
   data,
   lsig,
   qu,
+  discrete = FALSE,
   err = NULL,
   multicore = !is.null(cluster),
   cluster = NULL,
@@ -27,6 +28,8 @@ By default the variables are taken from environment(formula): typically the envi
 \item{lsig}{A vector of value of the log learning rate (log(sigma)) over which the calibration loss function is evaluated.}
 
 \item{qu}{The quantile of interest. Should be in (0, 1).}
+
+\item{discrete}{If TRUE then covariate discretisation is used for faster model fitting. See \code{mgcv::}\link[mgcv]{bam} for details.}
 
 \item{err}{An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
 Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).

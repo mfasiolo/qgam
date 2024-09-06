@@ -7,6 +7,7 @@
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
+#' @param discrete If TRUE then covariate discretisation is used for faster model fitting. See \code{mgcv::}\link[mgcv]{bam} for details.
 #' @param lsig The value of the log learning rate used to create the Gibbs posterior. By defauls \code{lsig=NULL} and this
 #'             parameter is estimated by posterior calibration described in Fasiolo et al. (2017). Obviously, the function is much faster
 #'             if the user provides a value. 
@@ -116,12 +117,16 @@ qgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL,
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
   
   # Setting up control parameter (mostly used by tuneLearnFast)
-  ctrl <- list("gausFit" = NULL, "verbose" = FALSE, "b" = 0, "link" = "identity")
+  ctrl <- list("verbose" = FALSE, "b" = 0, "link" = "identity")
   
   # Checking if the control list contains unknown names entries in "control" substitute those in "ctrl"
   ctrl <- .ctrlSetup(innerCtrl = ctrl, outerCtrl = control, verbose = FALSE)
   
-  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  tmp <- ctrl$init_qgam
+  if(is.null(tmp)){
+    tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  }
+  ctrl$init_qgam <- tmp
   gausFit <- tmp$gausFit
   formL <- tmp$formL
   varHat <- tmp$varHat
@@ -138,10 +143,13 @@ qgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL,
     lsig <- learn$lsig
     err <- learn$err # Over-writing err parameter!
     argGam$mustart <- learn$final_fit[[1]]$mustart
+    # Annoyingly, initial coeffs are supplied via "coef" argument in bam() and "start" in gam()
+    argGam[[ ifelse(discrete, "coef", "start") ]] <- learn$final_fit[[1]]$coefstart 
     argGam$in.out <- learn$final_fit[[1]]$in.out
   } else {
-    if( is.null(argGam$start) && is.null(argGam$mustart)  ) {
+    if( is.null(argGam$coef) && is.null(argGam$start) && is.null(argGam$mustart)  ) {
       argGam$mustart <- initM$mustart
+      argGam[[ ifelse(discrete, "coef", "start") ]] <- initM$coefstart
     }
   }
   

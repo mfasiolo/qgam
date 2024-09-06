@@ -10,6 +10,7 @@
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param lsig A vector of value of the log learning rate (log(sigma)) over which the calibration loss function is evaluated.
 #' @param qu The quantile of interest. Should be in (0, 1).
+#' @param discrete If TRUE then covariate discretisation is used for faster model fitting. See \code{mgcv::}\link[mgcv]{bam} for details.
 #' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
 #'            Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
 #'            The old default was \code{err=0.05}.
@@ -119,18 +120,21 @@ tuneLearn <- function(form, data, lsig, qu, discrete = FALSE, err = NULL,
   n <- nrow(data)
   nt <- length(lsig)
   
-  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  tmp <- ctrl$init_qgam
+  if( is.null(tmp) ){
+    tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  }
   gausFit <- tmp$gausFit
   formL <- tmp$formL
   varHat <- tmp$varHat
-  initM <- tmp$initM
+  initM <- tmp$initM[[1]]
   
   # Get loss smoothness
   if( is.null(err) ){ err <- .getErrParam(qu = qu, gFit = gausFit, varHat = varHat) }
   
   # For each value of 'lsig' fit on full data
   main <- .tuneLearnFullFits(lsig = lsig, form = formL, fam = "elf", qu = qu, err = err,
-                             ctrl = ctrl, data = data, argGam = argGam, gausFit = gausFit, 
+                             ctrl = ctrl, data = data, discrete = discrete, argGam = argGam, gausFit = gausFit, 
                              varHat = varHat, initM = initM)
   
   # Get score for each value of 'lsig'
@@ -147,7 +151,7 @@ tuneLearn <- function(form, data, lsig, qu, discrete = FALSE, err = NULL,
   # convProb indicates whether there have been convergence problems during smoothing parameter estimation
   convProb <- sapply(main[["store"]], "[[", "convProb")
   names(convProb) <- lsig
-    
+  
   out <- list("lsig" = lsig[which.min(outLoss)], "loss" = outLoss, 
               "edf" = main[["edfStore"]], "convProb" = convProb)
   attr(out, "class") <- "learn"

@@ -15,9 +15,13 @@
   mObj$family$putCo( co )
   mObj$family$putTheta( lsig )
   
-  # Full data fit
-  withCallingHandlers({
-    mFit <- do.call(gam_name, c(list("G" = quote(mObj), "in.out" = initM[["in.out"]], mustart = initM[["mustart"]], "discrete" = discrete), argGam))}, warning = function(w) {
+  
+  call_list <- c(list("G" = quote(mObj), "in.out" = initM[["in.out"]], "mustart" = initM[["mustart"]], "discrete" = discrete), argGam)
+  
+  # Annoyingly, initial coeffs are supplied via "coef" argument in bam() and "start" in gam()
+  call_list[[ ifelse(discrete, "coef", "start") ]] <- initM$coefstart 
+
+  withCallingHandlers({ mFit <- do.call(gam_name, call_list) }, warning = function(w) {
       if (length(grep("Fitting terminated with step failure", conditionMessage(w))) ||
           length(grep("Iteration limit reached without full convergence", conditionMessage(w))))
       {
@@ -28,7 +32,8 @@
   
   mMU <- mFit$fit
   initM <- list("mustart" = mFit$fitted.values, 
-                "in.out" = list("sp" = if(gam_name == "bam" & !is.null(mFit$full.sp)){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
+                "coefstart" = coef(mFit), 
+                "in.out" = list("sp" = if(gam_name == "bam" && !is.null(mFit$full.sp)){ mFit$full.sp } else { mFit$sp }, "scale" = 1))
   
   # Standard deviation of fitted quantile using full data
   sdev <- NULL 

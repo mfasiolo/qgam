@@ -9,6 +9,7 @@
 #' @param data A data frame or list containing the model response variable and covariates required by the formula.
 #'             By default the variables are taken from environment(formula): typically the environment from which gam is called.
 #' @param qu The quantile of interest. Should be in (0, 1).
+#' @param discrete If TRUE then covariate discretisation is used for faster model fitting. See \code{mgcv::}\link[mgcv]{bam} for details.
 #' @param err An upper bound on the error of the estimated quantile curve. Should be in (0, 1). 
 #'            Since qgam v1.3 it is selected automatically, using the methods of Fasiolo et al. (2017).
 #'            The old default was \code{err=0.05}.
@@ -162,7 +163,7 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
   ctrl <- list( "loss" = "calFast", "sam" = "boot", "vtype" = "m", "epsB" = 1e-5,
                 "init" = NULL, "brac" = log( c(1/2, 2) ),  "K" = 50,
                 "redWd" = 10, "tol" = .Machine$double.eps^0.25, "aTol" = 0.05, "b" = 0,
-                "gausFit" = NULL,
+                "init_qgam" = NULL,
                 "link" = "identity",
                 "verbose" = FALSE, "progress" = TRUE )
   
@@ -192,7 +193,10 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
     wb <- lapply(1:ctrl[["K"]], function(ii) tabulate(which(tmp != ii), n)) 
   }
   
-  tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  tmp <- ctrl$init_qgam
+  if(is.null(tmp)){
+    tmp <- .init_gauss_fit(form = form, data = data, ctrl = ctrl, argGam = argGam, qu = qu, discrete = discrete)
+  }
   gausFit <- tmp$gausFit
   formL <- tmp$formL
   varHat <- tmp$varHat
