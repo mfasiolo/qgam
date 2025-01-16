@@ -30,8 +30,8 @@
   co <- fam$getCo( )
   
   sig <- exp( theta )
-  lam <- co / sig
-  
+  lam <- co
+
   if( is.null(offset) ){
     offset <- numeric( n )  
   }
@@ -45,9 +45,7 @@
   
   mu <- fam$linkinv( eta )
   
-  z <- (y - mu) / sig
-  
-  pl <- plogis(y, mu, lam * sig)
+  pl <- plogis(y, mu, lam)
   
   # [1] Derivatives of llk wrt parameters
   l1 <- numeric( n )
