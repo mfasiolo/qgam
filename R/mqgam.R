@@ -129,10 +129,11 @@ mqgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL,
       argGam[[ ifelse(discrete, "coef", "start") ]] <- learn$final_fit[[ii]]$coefstart 
       argGam$mustart <- learn$final_fit[[ii]]$mustart
       argGam$in.out <- learn$final_fit[[ii]]$in.out
+      ctrl$init_qgam$initM <- NA # initM should NOT be used by qgam, hence we want to get an error if it gets used.
+    } else {
+      ctrl$initM <- ctrl$initM[[ii]]
     }
-    
-    ctrl$init_qgam$initM <- NA # initM should NOT be used by qgam, hence we want to get an error if it gets used.
-    
+      
     .out <- qgam(form, data, qu[ii], lsig = lsig[ii], err = err[ii], discrete = discrete, multicore = FALSE, control = ctrl, argGam = argGam)
     
     # Removing data and smooth matrix to reduce memory requirements. There quantities

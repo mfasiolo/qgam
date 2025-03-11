@@ -7,7 +7,7 @@ importFrom(parallel, "makeCluster", "stopCluster", "detectCores", "clusterExport
 
 importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom", "make.link", 
                   "dlogis", "plogis", "complete.cases", "na.omit", "quantile", "runif", "cov", 
-                  "optim", "anova", "optimize", "residuals", "sd", "gaussian")
+                  "optim", "anova", "optimize", "residuals", "sd", "gaussian", "update", "as.formula")
 importFrom(grDevices, "rgb")
 
 import(mgcv)
