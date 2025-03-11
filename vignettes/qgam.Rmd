@@ -98,6 +98,24 @@ qdo(fit, qu = 0.4, summary)
 ```
 Notice that here the generic function `summary` is calling `summary.gam`, because `summary.qgam` has not been implemented yet. Hence one cannot quite rely on the p-value provided by this function, because their are calculated using result that apply to parametric, not quantile, regression.
 
+
+Handling big data sets 
+=======================
+
+Since version 2.0, `qgam` can handle big data sets by setting the argument `discrete = TRUE`. This is particularly useful when the number of observations is very large, and the number of unique values of the covariates is relatively small. In this case, the function `qgam` will use a discrete representation of the covariates (provided by `mgcv::bam`, see `?bam` for details), which is much more memory efficient. Here is a simple simulated example:
+
+```{r}
+dat <- gamSim(1, n=40000, dist="normal", scale=2)
+
+b <- qgam(y ~ s(x0)+s(x1)+s(x2)+s(x3),data=dat, qu = 0.1, discrete = TRUE)
+
+plot(b, pages = 1)
+```
+
+You can check this model takes around 5 seconds to fit, while setting `discrete = FALSE` would take much longer (but the fit is almost identical).
+
+
+
 Dealing with heteroscedasticity
 =======================
   

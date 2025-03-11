@@ -2,7 +2,7 @@ Package: qgam
 Type: Package
 Title: Smooth Additive Quantile Regression Models
 Version: 2.0.0
-Date: 2023-06-27
+Date: 2025-03-11
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
              person("Ben", "Griffiths", role = c("aut")), 
              person("Simon", "N. Wood", role = c("ctb")), 
@@ -21,8 +21,8 @@ Description: Smooth additive quantile regression models, fitted using
     fits non-parametric quantile regression models.
 License: GPL (>=2)
 Depends:
-    R (>= 3.5.0),
-    mgcv (>= 1.8-28)
+    R (>= 4.0),
+    mgcv (>= 1.9)
 Imports:
     shiny,
     plyr,
