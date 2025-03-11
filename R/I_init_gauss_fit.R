@@ -1,6 +1,9 @@
 #### Fit initial Gaussian models needed by QGAMs later on
 .init_gauss_fit <- function(form, data, ctrl, argGam, qu, discrete){
   
+  # We do not want initialisation or "sp" for qgam to be used to fit the gaussian gam
+  argGam[c("coef", "start", "mustart", "etastart", "sp", "in.out")] <- NULL
+  
   gam_name <- ifelse(discrete, "bam", "gam")
   
   if( is.formula(form) ) { # [A] Mean GAM 

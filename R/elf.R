@@ -115,11 +115,11 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
   getCo <- function( ) get(".co")
   putCo <- function(co) assign(".co", co, envir=environment(sys.function()))
   
-  # variance <- function(mu) exp(get(".Theta"))  ##### XXX ##### Necessary?
+  # variance <- function(mu) exp(get(".Theta")) 
   
   validmu <- function(mu) all( is.finite(mu) )
   
-  dev.resids <- function(y, mu, wt, theta=NULL) {        ##### XXX #####
+  dev.resids <- function(y, mu, wt, theta=NULL) {    
     if( is.null(theta) ) theta <- get(".Theta")
     tau <- get(".qu")
     co <- get(".co")
