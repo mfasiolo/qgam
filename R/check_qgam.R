@@ -47,14 +47,14 @@ check.qgam <- function(obj,
   # Here we are estimating E( Phi(y, mu, lam*sig) - I(y > mu) | x ) using a Gaussian GAM
   co <- obj$family$getCo()
   sig <- exp( obj$family$getTheta() )
-  lam <- co / sig
+  lam <- co
   
   dat <- obj$model
   form <- obj$formula
   res <- dat[[ form[[2]] ]] - as.matrix(obj$fitted.values)[ , 1]
   form[[2]] <- as.symbol( "bias" )
   
-  dat$bias <- plogis(res, 0, sig*lam) - as.numeric(res > 0)
+  dat$bias <- plogis(res, 0, lam) - as.numeric(res > 0)
   
   # Need to handle offsets
   offi <- which(sapply(names(dat), function(.x) grepl("offset(", .x, fixed=TRUE)))
