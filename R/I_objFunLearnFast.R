@@ -79,7 +79,7 @@
         bObj$w <- .wb
         
         # Recycle boot initialization, but at first iteration this is NULL... 
-        .init <- if(is.null(initB[[kk]])){ list(initM$start) } else { list(initB[[kk]], initM$start) }
+        .init <- if(is.null(initB[[kk]])){ list(initM$coefstart) } else { list(initB[[kk]], initM$coefstart) }
         
         # I need to get null coefficients.
         bObj$null.coef <- bObj$family$get.null.coef(bObj)$null.coef

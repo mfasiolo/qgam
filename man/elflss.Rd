@@ -63,7 +63,7 @@ lines(x, tmp$fit[ , 1] - 3 * tmp$se.fit[ , 1], col = 2)
 Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
             Fast calibrated additive quantile regression. 
             Journal of the American Statistical Association (to appear).
-            \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
+            \doi{10.1080/01621459.2020.1725521}.
             
             Wood, Simon N., Pya, N. and Safken, B. (2017). Smoothing parameter and model selection for 
             general smooth models. Journal of the American Statistical Association.

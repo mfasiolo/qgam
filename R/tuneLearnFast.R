@@ -74,7 +74,7 @@
 #' @references Fasiolo, M., Wood, S.N., Zaffran, M., Nedellec, R. and Goude, Y., 2020. 
 #'             Fast calibrated additive quantile regression. 
 #'             Journal of the American Statistical Association (to appear).
-#'             \url{https://www.tandfonline.com/doi/full/10.1080/01621459.2020.1725521}.
+#'             \doi{10.1080/01621459.2020.1725521}.
 #' @examples
 #' library(qgam); library(MASS)
 #' 
