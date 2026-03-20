@@ -11,7 +11,6 @@ importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom",
 importFrom(grDevices, "rgb")
 
 import(mgcv)
-import(shiny)
 import(graphics)
 
 S3method("check", "qgam", "check.qgam")

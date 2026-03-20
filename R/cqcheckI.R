@@ -74,6 +74,11 @@
 #'
 cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", height = "680px")
 {
+  pack <- requireNamespace("shiny", quietly=TRUE)
+  if( !pack ){
+    message("Please install the shiny package to use this function.")
+    return(NULL)
+  }
   
   #### Set up
   if( is.null(X) ){ 
@@ -130,24 +135,24 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
 .cqcheck1DI <- function(.obj, .x1, .X, .y, .width, .height)
 {
   # User interface
-  ui <- fluidPage(
-    sidebarPanel(
-      numericInput('nbin', 'Num. bins', 10, min = 1, max = Inf), 
-      numericInput('lev', 'Sign. lev.', 0.05, min = 0, max = 1),
+  ui <- shiny::fluidPage(
+    shiny::sidebarPanel(
+      shiny::numericInput('nbin', 'Num. bins', 10, min = 1, max = Inf), 
+      shiny::numericInput('lev', 'Sign. lev.', 0.05, min = 0, max = 1),
       width = 2
     ),
-    mainPanel(
-      h4("Brush and double-click to zoom in. Double-click to zoom out."),
-      plotOutput("plot1", 
+    shiny::mainPanel(
+      shiny::h4("Brush and double-click to zoom in. Double-click to zoom out."),
+      shiny::plotOutput("plot1", 
                  dblclick = "plot1_dblclick",
                  hover = "plot1_hover",
-                 brush = brushOpts(
+                 brush = shiny::brushOpts(
                    id = "plot1_brush",
                    resetOnNew = TRUE), 
                  width = .width,
                  height = .height),
       
-      verbatimTextOutput("info")
+      shiny::verbatimTextOutput("info")
     )
   )
   
@@ -155,9 +160,9 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
   server <- function(input, output) {
     
     # Control panel inputs
-    ranges <- reactiveValues(x = NULL, y = NULL)
-    nbin <- reactive({ input$nbin })
-    lev <- reactive({ input$lev })
+    ranges <- shiny::reactiveValues(x = NULL, y = NULL)
+    nbin <- shiny::reactive({ input$nbin })
+    lev <- shiny::reactive({ input$lev })
     
     myPlot <- function(brush = NULL)
     {
@@ -171,16 +176,16 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
     }
     
     # Initial plot
-    output$plot1 <- renderPlot({ myPlot() })
+    output$plot1 <- shiny::renderPlot({ myPlot() })
     
     # Update if double click or double click + brush
-    observeEvent(input$plot1_dblclick, {
+    shiny::observeEvent(input$plot1_dblclick, {
       brush <- input$plot1_brush
-      output$plot1 <- renderPlot({ myPlot(brush = brush) })
+      output$plot1 <- shiny::renderPlot({ myPlot(brush = brush) })
     })
     
     # Print some info
-    output$info <- renderText({
+    output$info <- shiny::renderText({
       x_str <- function(e) {
         if(is.null(e)) return("NULL\n")
         paste0("x=", round(e$x, 1), "\n")
@@ -196,7 +201,7 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
       )
     })
   }
-  return( shinyApp(ui, server) )
+  return( shiny::shinyApp(ui, server) )
 }
 
 
@@ -205,26 +210,26 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
 .cqcheck2DI <- function(.obj, .x1, .x2, .X, .y, .width, .height)
 {
   # User interface
-  ui <- fluidPage(
-    sidebarPanel(
-      numericInput('nbin1', 'N. bins x1', 10, min = 1, max = Inf), 
-      numericInput('nbin2', 'N. bins x2', 10, min = 1, max = Inf), 
-      numericInput('lev', 'Sign. lev.', 0.05, min = 0, max = 1), 
-      checkboxInput('scatter', 'Add scatter', value = FALSE),
+  ui <- shiny::fluidPage(
+    shiny::sidebarPanel(
+      shiny::numericInput('nbin1', 'N. bins x1', 10, min = 1, max = Inf), 
+      shiny::numericInput('nbin2', 'N. bins x2', 10, min = 1, max = Inf), 
+      shiny::numericInput('lev', 'Sign. lev.', 0.05, min = 0, max = 1), 
+      shiny::checkboxInput('scatter', 'Add scatter', value = FALSE),
       width = 2
     ),
-    mainPanel(
-      h4("Brush and double-click to zoom in. Double-click to zoom out."),
-      plotOutput("plot1", 
+    shiny::mainPanel(
+      shiny::h4("Brush and double-click to zoom in. Double-click to zoom out."),
+      shiny::plotOutput("plot1", 
                  dblclick = "plot1_dblclick",
                  hover = "plot1_hover",
-                 brush = brushOpts(
+                 brush = shiny::brushOpts(
                    id = "plot1_brush",
                    resetOnNew = TRUE), 
                  width = .width,
                  height = .height),
       
-      verbatimTextOutput("info")
+      shiny::verbatimTextOutput("info")
     )
   )
   
@@ -232,11 +237,11 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
   server <- function(input, output) {
     
     # Control panel inputs
-    ranges <- reactiveValues(x = NULL, y = NULL)
-    nbin1 <- reactive({ input$nbin1 })
-    nbin2 <- reactive({ input$nbin2 })
-    lev <- reactive({ input$lev })
-    scatter <- reactive({ input$scatter })
+    ranges <- shiny::reactiveValues(x = NULL, y = NULL)
+    nbin1 <- shiny::reactive({ input$nbin1 })
+    nbin2 <- shiny::reactive({ input$nbin2 })
+    lev <- shiny::reactive({ input$lev })
+    scatter <- shiny::reactive({ input$scatter })
     
     myPlot <- function(brush = NULL)
     {
@@ -252,16 +257,16 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
     }
     
     # Initial plot
-    output$plot1 <- renderPlot({ myPlot() })
+    output$plot1 <- shiny::renderPlot({ myPlot() })
     
     # Update if double click or double click + brush
-    observeEvent(input$plot1_dblclick, {
+    shiny::observeEvent(input$plot1_dblclick, {
       brush <- input$plot1_brush
-      output$plot1 <- renderPlot({ myPlot(brush = brush) })
+      output$plot1 <- shiny::renderPlot({ myPlot(brush = brush) })
     })
     
     # Print some info
-    output$info <- renderText({
+    output$info <- shiny::renderText({
       xy_str <- function(e) {
         if(is.null(e)) return("NULL\n")
         paste0("x1=", round(e$x, 1), ", x2=", round(e$y, 1), "\n")
@@ -279,5 +284,5 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
     })
   }
   
-  return( shinyApp(ui, server) )
+  return( shiny::shinyApp(ui, server) )
 }
