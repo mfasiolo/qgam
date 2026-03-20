@@ -128,7 +128,7 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
     .cqcheck2DI(.obj = obj, .x1 = x1, .x2 = x2, .X = X, .y = y, .width = width, .height = height)
   }
   
-  if( run ){ return(runApp(out)) } else { return(out) }
+  if( run ){ return(shiny::runApp(out)) } else { return(out) }
 }
 
 #### Internal function for 1D plot
