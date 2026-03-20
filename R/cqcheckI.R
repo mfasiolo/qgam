@@ -76,7 +76,7 @@ cqcheckI <- function(obj, v, X = NULL, y = NULL, run = TRUE, width = "100%", hei
 {
   pack <- requireNamespace("shiny", quietly=TRUE)
   if( !pack ){
-    message("Please install the shiny package to use this function.")
+    message("Please install the package \"shiny\" to use this function.")
     return(NULL)
   }
   
