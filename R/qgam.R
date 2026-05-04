@@ -148,8 +148,8 @@ qgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL,
     argGam$in.out <- learn$final_fit[[1]]$in.out
   } else {
     if( is.null(argGam$coef) && is.null(argGam$start) && is.null(argGam$mustart)  ) {
-      argGam$mustart <- initM$mustart
-      argGam[[ ifelse(discrete, "coef", "start") ]] <- initM$coefstart
+      argGam$mustart <- initM[[1]]$mustart
+      argGam[[ ifelse(discrete, "coef", "start") ]] <- initM[[1]]$coefstart
     }
   }
   
