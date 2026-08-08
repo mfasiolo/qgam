@@ -50,7 +50,7 @@
     
     .datO <- na.omit( subset(.dat, select = .vars) )
     
-    if( is.null(.drop) || .drop ) { .dat0 <- droplevels( .datO ) }
+    if( is.null(.drop) || .drop ) { .datO <- droplevels( .datO ) }
     
   }
   
