@@ -7,14 +7,14 @@
   gam_name <- ifelse(discrete, "bam", "gam")
   
   if( is.formula(form) ) { # [A] Mean GAM 
-    gFit <- do.call(gam_name, c(list("formula" = form, "data" = quote(data),
-                                     "family" = gaussian(link=ctrl[["link"]]), "discrete" = discrete), argGam))
+      gFit <- do.call(gam_name, c(list("formula" = form, "data" = quote(data),
+                                       "family" = gaussian(link=ctrl[["link"]]), "discrete" = discrete), argGam))
     varHat <- gFit$sig2
     formL <- form
   } else { # [B] Mean and variance GAM(s)
     if(discrete){ # B.a Discrete case: fit mean and variance separately
       gFit <- do.call(gam_name, c(list("formula" = form[[1]], "data" = quote(data),
-                                          "family" = gaussian(link=ctrl[["link"]][[1]])), argGam, discrete = discrete))
+                                       "family" = gaussian(link=ctrl[["link"]][[1]])), argGam, discrete = discrete))
       R <- residuals(gFit, type = "response")
       
       # Add variable to data with long name to avoid over-writing existing variables!
@@ -35,6 +35,8 @@
   # Provide initialisation for fitted quantiles
   initM <- lapply(qu, function(q){
     mustart <- qnorm(q, as.matrix(gFit$fitted.values)[, 1], sqrt(varHat))
+    if (ctrl$link == "log") mustart <- pmax(mustart, 0.01)
+    if (ctrl$link == "logit") mustart <- pmin(pmax(mustart, 0.01), 0.99)
     # Get initial regression coefficients, several cases to cover:
     # [A]: we do not model the variance and we have an intercept in the mean model
     # [B] We do model the variance and/or there is no intercept in the mean model

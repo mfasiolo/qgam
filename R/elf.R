@@ -79,7 +79,7 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
   
   linktemp <- substitute(link)
   if (!is.character(linktemp)) linktemp <- deparse(linktemp)
-  if (linktemp %in% c("log", "identity", "sqrt")) stats <- make.link(linktemp)
+  if (linktemp %in% c("log", "identity", "sqrt", "logit")) stats <- make.link(linktemp)
   else if (is.character(link)) {
     stats <- make.link(link)
     linktemp <- link
@@ -89,7 +89,7 @@ elf <- function (theta = NULL, link = "identity", qu, co) {
       if (!is.null(stats$name))
         linktemp <- stats$name
     }
-    else stop(linktemp, " link not available for elf family; available links are \"identity\", \"log\" and \"sqrt\"")
+    else stop(linktemp, " link not available for elf family; available links are \"identity\", \"log\", \"sqrt\" and \"logit\".")
   }
   ## Theta <-  NULL;
   n.theta <- 1
