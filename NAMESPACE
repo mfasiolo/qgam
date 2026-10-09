@@ -1,8 +1,6 @@
 useDynLib(qgam, .registration = TRUE, .fixes = ".C_")
 exportPattern("^[[:alpha:]]+")
 
-importFrom(plyr, "is.formula", "llply", "mlply")
-importFrom(doParallel, "registerDoParallel")
 importFrom(parallel, "makeCluster", "stopCluster", "detectCores", "clusterExport", "clusterEvalQ")
 
 importFrom(stats, "pnorm", "coef", "qnorm", "printCoefmat", "predict", "qbinom", "make.link", 

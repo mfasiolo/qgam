@@ -110,7 +110,7 @@
       return( list("z" = z, "init" = init) )
     } 
     
-    if( !is.null(cluster) ){
+    if( multicore ){
       nc <- length(cluster)
       environment(.funToApply) <- .GlobalEnv
       clusterExport(cluster, c("initB", "initM", "mMU", "co", "lsig", "qu", "sdev"), envir = environment())
@@ -125,19 +125,11 @@
     sched <- split(1:nbo, do.call("c", sched))
     
     # Loop over bootstrap datasets to get standardized deviations from full data fit
-    withCallingHandlers({
-      out <- llply(.data = sched,
-                   .fun = .funToApply,
-                   .parallel = multicore,
-                   .inform = ctrl[["verbose"]],
-                   .paropts = paropts#,
-                   ### ... arguments start here
-      ) 
-    }, warning = function(w) {
-      # There is a bug in plyr concerning a useless warning about "..."
-      if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
-        invokeRestart("muffleWarning")
-    })
+    out <- if(multicore) {
+      parallel::parLapply(cluster, sched, .funToApply)
+    } else {
+      lapply(sched, .funToApply)
+    }
     
     # Get stardardized deviations and ... 
     .bindFun <- if( ctrl$loss == "cal" ) { "rbind" } else { "c" }
@@ -155,4 +147,4 @@
   } 
   
   return( list("outLoss" = outLoss, "initM" = initM, "initB" = initB) )
-} 
+}

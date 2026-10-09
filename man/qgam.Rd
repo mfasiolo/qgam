@@ -44,10 +44,8 @@ which will be used if \code{multicore == TRUE}. The user has to remember to stop
 
 \item{ncores}{Number of cores used. Relevant if \code{multicore == TRUE}.}
 
-\item{paropts}{a list of additional options passed into the foreach function when parallel computation is enabled. 
-This is important if (for example) your code relies on external data or packages: 
-use the .export and .packages arguments to supply them so that all cluster nodes 
-have the correct environment set up for computing.}
+\item{paropts}{a list with optional \code{.export} and \code{.packages} entries used to
+export objects and load packages on parallel workers.}
 
 \item{control}{A list of control parameters. The only one relevant here is \code{link}, which is the link function
 used (see \code{?elf} and \code{?elflss} for defaults). All other control parameters are used by 

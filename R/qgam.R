@@ -18,10 +18,8 @@
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
 #'                which will be used if \code{multicore == TRUE}. The user has to remember to stop the cluster.
-#' @param paropts a list of additional options passed into the foreach function when parallel computation is enabled. 
-#'                This is important if (for example) your code relies on external data or packages: 
-#'                use the .export and .packages arguments to supply them so that all cluster nodes 
-#'                have the correct environment set up for computing. 
+#' @param paropts a list with optional \code{.export} and \code{.packages} entries used to
+#'                export objects and load packages on parallel workers.
 #' @param control A list of control parameters. The only one relevant here is \code{link}, which is the link function
 #'                used (see \code{?elf} and \code{?elflss} for defaults). All other control parameters are used by 
 #'                \code{tuneLearnFast}. See \code{?tuneLearnFast} for details.
@@ -166,5 +164,3 @@ qgam <- function(form, data, qu, discrete = FALSE, lsig = NULL, err = NULL,
   return( fit )
   
 }
-
-

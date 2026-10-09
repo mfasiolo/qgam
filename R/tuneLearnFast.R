@@ -17,10 +17,8 @@
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
 #'                which will be used if \code{multicore == TRUE}. The user has to remember to stop the cluster.
-#' @param paropts a list of additional options passed into the foreach function when parallel computation is enabled. 
-#'                This is important if (for example) your code relies on external data or packages: 
-#'                use the .export and .packages arguments to supply them so that all cluster nodes 
-#'                have the correct environment set up for computing. 
+#' @param paropts a list with optional \code{.export} and \code{.packages} entries used to
+#'                export objects and load packages on parallel workers.
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
 #'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
 #'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
@@ -142,6 +140,7 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
                           control = list(), argGam = NULL)
 { 
   discrete <- .should_we_use_discrete(form = form, discrete = discrete)
+  parenv <- if(inherits(form, "formula")) environment(form) else environment(form[[1]])
   
   gam_name <- ifelse(discrete, "bam", "gam")
   
@@ -261,7 +260,7 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
     cluster <- tmp$cluster
     ncores <- tmp$ncores
     clusterCreated <- tmp$clusterCreated
-    registerDoParallel(cluster)
+    if(clusterCreated) on.exit(stopCluster(cluster), add = TRUE)
     
     # Load "qgam" and user-specified packages
     tmp <- unique( c("qgam", paropts[[".packages"]]) )
@@ -270,9 +269,17 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
     paropts[[".packages"]] <- NULL
     
     # Export bootstrap objects, prediction matrix and user-defined stuff
-    tmp <- unique( c("bObj", "pMat", "wb", "ctrl", "argGam", ".egamFit", paropts[[".export"]]) )
+    tmp <- c("bObj", "pMat", "wb", "ctrl", "argGam", ".egamFit")
     clusterExport(cluster, tmp, envir = environment())
+    if(length(paropts[[".export"]])) {
+      clusterExport(cluster, unique(paropts[[".export"]]), envir = parenv)
+    }
     paropts[[".export"]] <- NULL
+
+    unsupported <- names(paropts)
+    if(length(unsupported)) {
+      warning("Ignoring unsupported paropts: ", paste(unsupported, collapse = ", "))
+    }
   }
   
   # Estimated learning rates, num of bracket expansions, error rates and bracket ranges used in bisection
@@ -372,9 +379,6 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
   out <- list("lsig" = sigs, "err" = errors, "ranges" = rans, "store" = store, "final_fit" = final_fit)
   attr(out, "class") <- "learnFast"
   
-  # Close the cluster if it was opened inside this function
-  if(multicore && clusterCreated) stopCluster(cluster)
-  
   return( out )
 }
 
@@ -414,8 +418,4 @@ tuneLearnFast <- function(form, data, qu, discrete = FALSE, err = NULL,
   
   return( res )
 }
-
-
-
-
 

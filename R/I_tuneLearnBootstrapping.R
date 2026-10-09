@@ -2,7 +2,7 @@
 #### Internal function that does the bootstrapping or cross-validation
 ###############
 .tuneLearnBootstrapping <- function(lsig, form, fam, qu, ctrl, data, store, pMat, gausFit, argGam, 
-                                    multicore, cluster, ncores, paropts){
+                                    multicore, cluster, ncores, paropts, parenv){
   
   n <- nrow(data)
   nt <- length(lsig)
@@ -75,34 +75,38 @@
   }  # # # # # # # # # .getBootDev END # # # # # # # # #
   
   if( multicore ){ 
-    # Making sure "qgam" is loaded on cluser
-    paropts[[".packages"]] <- unique( c("qgam", paropts[[".packages"]]) )
-    
     tmp <- .clusterSetUp(cluster = cluster, ncores = ncores) #, exportALL = TRUE)
     cluster <- tmp$cluster
     ncores <- tmp$ncores
     clusterCreated <- tmp$clusterCreated
-    registerDoParallel(cluster)
+    if(clusterCreated) on.exit(stopCluster(cluster), add = TRUE)
+
+    # Load qgam and any user-specified packages on each worker.
+    workerPackages <- unique(c("qgam", paropts[[".packages"]]))
+    clusterExport(cluster, "workerPackages", envir = environment())
+    clusterEvalQ(cluster, lapply(workerPackages, library, character.only = TRUE))
     
-    # Exporting stuff. To about all environment being exported all the time, use .GlobalEnv  
-    clusterExport(cluster, c("pMat", "bObj", "lsig", "ctrl", "store", "argGam", ".egamFit"), 
+    # Export package state and any user-specified objects.
+    toExport <- c("pMat", "bObj", "lsig", "ctrl", "store", "argGam", ".egamFit")
+    clusterExport(cluster, toExport,
                   envir = environment())
+    if(length(paropts[[".export"]])) {
+      clusterExport(cluster, unique(paropts[[".export"]]), envir = parenv)
+    }
     environment(.getBootDev) <- .GlobalEnv
+
+    unsupported <- setdiff(names(paropts), c(".packages", ".export"))
+    if(length(unsupported)) {
+      warning("Ignoring unsupported paropts: ", paste(unsupported, collapse = ", "))
+    }
   }
   
   # Loop over bootstrap datasets to get standardized deviations from full data fit
-  withCallingHandlers({
-    z <- llply( .data = wb, 
-                .fun = .getBootDev,
-                .parallel = multicore,
-                .progress = ctrl[["progress"]],
-                .inform = ctrl[["verbose"]],
-                .paropts = paropts)
-  }, warning = function(w) {
-    # There is a bug in plyr concerning a useless warning about "..."
-    if (length(grep("... may be used in an incorrect context", conditionMessage(w))))
-      invokeRestart("muffleWarning")
-  })
+  z <- if(multicore) {
+    parallel::parLapply(cluster, wb, .getBootDev)
+  } else {
+    lapply(wb, .getBootDev)
+  }
   
   # Get stardardized deviations and ... 
   .bindFun <- if( ctrl$loss == "cal" ) { "rbind" } else { "c" }
@@ -124,9 +128,6 @@
     outLoss <- sapply(z, function(.x) .checkloss(.x, 0, qu = qu))
   }
 
-  # Close the cluster if it was opened inside this function
-  if(multicore && clusterCreated) stopCluster(cluster)
-  
   return( outLoss )
   
 }

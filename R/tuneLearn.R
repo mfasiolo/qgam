@@ -18,10 +18,8 @@
 #' @param ncores Number of cores used. Relevant if \code{multicore == TRUE}.
 #' @param cluster An object of class \code{c("SOCKcluster", "cluster")}. This allowes the user to pass her own cluster,
 #'                which will be used if \code{multicore == TRUE}. The user has to remember to stop the cluster.
-#' @param paropts a list of additional options passed into the foreach function when parallel computation is enabled. 
-#'                This is important if (for example) your code relies on external data or packages: 
-#'                use the .export and .packages arguments to supply them so that all cluster nodes 
-#'                have the correct environment set up for computing. 
+#' @param paropts a list with optional \code{.export} and \code{.packages} entries used to
+#'                export objects and load packages on parallel workers.
 #' @param control A list of control parameters for \code{tuneLearn} with entries: \itemize{
 #'                   \item{\code{loss} = loss function use to tune log(sigma). If \code{loss=="cal"} is chosen, then log(sigma) is chosen so that
 #'                                       credible intervals for the fitted curve are calibrated. See Fasiolo et al. (2017) for details.
@@ -40,8 +38,7 @@
 #'                                       Default is \code{epsB=1e-5}.}
 #'                   \item{\code{verbose} = if TRUE some more details are given. By default \code{verbose=FALSE}.}
 #'                   \item{\code{link} = link function to be used. See \code{?elf} and \code{?elflss} for defaults.}
-#'                   \item{\code{progress} = argument passed to plyr::llply. By default \code{progress="text"} so that progress
-#'                                           is reported. Set it to \code{"none"} to avoid it.}
+#'                   \item{\code{progress} = useless, but retained for backward compatibility.}
 #' }
 #' @param argGam A list of parameters to be passed to \code{mgcv::gam}. This list can potentially include all the arguments listed
 #'               in \code{?gam}, with the exception of \code{formula}, \code{family} and \code{data}.
@@ -95,6 +92,7 @@ tuneLearn <- function(form, data, lsig, qu, discrete = FALSE, err = NULL,
   if( length(qu) > 1 ) stop("length(qu) > 1, but this method works only for scalar qu")
   
   discrete <- .should_we_use_discrete(form = form, discrete = discrete)
+  parenv <- if(inherits(form, "formula")) environment(form) else environment(form[[1]])
   
   # Removing all NAs, unused variables and factor levels from data
   data <- .cleanData(.dat = data, .form = form, .drop = argGam$drop.unused.levels)
@@ -144,7 +142,7 @@ tuneLearn <- function(form, data, lsig, qu, discrete = FALSE, err = NULL,
     .tuneLearnBootstrapping(lsig = lsig, form = formL, fam = "elf", qu = qu, ctrl = ctrl, 
                             data = data, store = main[["store"]], pMat = main[["pMat"]], gausFit = gausFit,
                             argGam = argGam, multicore = multicore, cluster = cluster, 
-                            ncores = ncores, paropts = paropts)
+                            ncores = ncores, paropts = paropts, parenv = parenv)
   }
   names( outLoss ) <- lsig
   
@@ -159,9 +157,6 @@ tuneLearn <- function(form, data, lsig, qu, discrete = FALSE, err = NULL,
   return( out )
   
 }
-
-
-
 
 
 

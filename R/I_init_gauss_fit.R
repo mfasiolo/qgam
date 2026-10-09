@@ -6,7 +6,7 @@
   
   gam_name <- ifelse(discrete, "bam", "gam")
   
-  if( is.formula(form) ) { # [A] Mean GAM 
+  if( inherits(form, "formula") ) { # [A] Mean GAM
       gFit <- do.call(gam_name, c(list("formula" = form, "data" = quote(data),
                                        "family" = gaussian(link=ctrl[["link"]]), "discrete" = discrete), argGam))
     varHat <- gFit$sig2
@@ -60,4 +60,3 @@
   
   return( list("gausFit" = gFit, "varHat" = varHat, "formL" = formL, "initM" = initM) )
 }
-

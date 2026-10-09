@@ -37,7 +37,6 @@ A first example: smoothing the motorcycle dataset
 Let's start with a simple example. Here we are fitting a regression model with an adaptive spline basis to quantile 0.8 of the motorcycle dataset.
 ```{r 1, message = F}
 library(qgam); library(MASS)
-if( suppressWarnings(require(RhpcBLASctl)) ){ blas_set_num_threads(1) } # Optional
 
 fit <- qgam(accel~s(times, k=20, bs="ad"), 
             data = mcycle, 
@@ -407,13 +406,12 @@ form <- NetDemand~s(wM,k=20,bs='cr') + s(wM_s95,k=20,bs='cr') +
 
 Notice that we use very few knots for the long term trend, this is because we don't want to end up interpolating the data. We use an adaptive cyclic smooth for `Posan`, we'll explain later why adaptivity is needed here. 
 
-Now we tune the learning rate on a grid, on two cores. As the first plot shows, the calibrations loss is minimized at $\log (\sigma)\approx 6$, the second plot shows how the effective degrees of freedom of each smooth term changes with $\log (\sigma)$.
+Now we tune the learning rate on a grid. As the first plot shows, the calibrations loss is minimized at $\log (\sigma)\approx 6$, the second plot shows how the effective degrees of freedom of each smooth term changes with $\log (\sigma)$.
 ```{r edf3, message=FALSE}
 set.seed(41241)
 sigSeq <- seq(4, 8, length.out = 16)
 closs <- tuneLearn(form = form, data = UKload, 
-                   lsig = sigSeq, qu = qu, control = list("K" = 20), 
-                   multicore = TRUE, ncores = 2)
+                   lsig = sigSeq, qu = qu)
 
 check(closs)
 ```
@@ -451,7 +449,6 @@ References
   * Fasiolo, M., Goude, Y., Nedellec, R. and Wood, S. N. (2017). Fast calibrated additive quantile regression. Available at https://arxiv.org/abs/1707.03307
   
   * Fasiolo, M., Nedellec, R., Goude, Y. and Wood, S.N. (2018). Scalable visualisation methods for modern Generalized Additive Models. Available at https://arxiv.org/abs/1809.10632
-
 
 
 
